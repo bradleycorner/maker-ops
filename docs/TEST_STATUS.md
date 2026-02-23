@@ -21,8 +21,9 @@ This document does not describe implementation details.
 
 ## Milestone 1 — Initial Backend Scaffold
 
-**Completed:** 2026-02-22
-**Status:** ✅ Verified — 51/51 checks passed
+**Completed:** 2026-02-23
+**Merged:** PR #1 → `main`
+**Status:** ✅ Closed — 51/51 checks passed
 
 ### Baseline Definition
 
@@ -75,6 +76,6 @@ A local HTTP API that accepts structured input, persists data to a local databas
 
 ### Test Run Summary
 
-| Milestone | Date | Checks | Passed | Failed |
-|---|---|---|---|---|
-| 1 — Initial backend scaffold | 2026-02-22 | 51 | 51 | 0 |
+| Milestone | Date | Checks | Passed | Failed | PR |
+|---|---|---|---|---|---|
+| 1 — Initial backend scaffold | 2026-02-23 | 51 | 51 | 0 | #1 → main |

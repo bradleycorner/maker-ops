@@ -85,6 +85,7 @@ Each milestone has its own detailed specification document in `/docs`.
 ### ✅ Milestone 1 — Core Cost Engine (Completed)
 
 **Goal:** Establish deterministic manufacturing economics.
+**Closed:** 2026-02-23 — PR #1 merged to `main`
 
 Delivered:
 
@@ -93,10 +94,14 @@ Delivered:
 - Machine amortization
 - Pricing formula implementation
 - Product cost calculation endpoint
+- Show analytics
+- README and project documentation
+- Regression test baseline (51/51 verified)
 
 Reference:
 ```
 docs/fdm-maker-cost-engine.md
+docs/TEST_STATUS.md
 ```
 
 ---
@@ -263,6 +268,42 @@ Each milestone document defines implementation requirements and success criteria
 
 ---
 
+## Development Workflow
+
+All development follows a structured branch and review process.
+
+### Branch Strategy
+
+```
+feature/<name>   →   develop   →   main
+```
+
+- **Feature branches** — one branch per milestone subsection or discrete unit of work
+- **`develop`** — integration branch; receives PRs from feature branches
+- **`main`** — milestone-gated; only receives PRs at milestone completion
+
+### Process per Milestone Subsection
+
+1. Create a feature branch from `develop`
+2. Implement the subsection
+3. Verify locally using the regression test script
+4. Open a PR to `develop`
+5. Merge when verified
+
+### Process at Milestone Completion
+
+1. All subsection PRs are merged to `develop`
+2. Full regression suite is run against `develop`
+3. `TEST_STATUS.md` is updated with results
+4. PR opened from `develop` to `main`
+5. Milestone marked closed in `PROJECT.md` and `TEST_STATUS.md`
+
+### CI
+
+GitHub Actions runs on all PRs via Claude Code integration.
+
+---
+
 ## How Claude Should Work With This File
 
 Claude must:
@@ -272,3 +313,5 @@ Claude must:
 3. Avoid introducing future milestone functionality early.
 4. Preserve architectural constraints defined in CLAUDE.md.
 5. Use milestone documents as authoritative implementation guides.
+6. Create feature branches from `develop` for each subsection.
+7. Open PRs to `develop` after local verification; open PRs to `main` only at milestone completion.
