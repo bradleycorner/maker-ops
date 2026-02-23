@@ -248,6 +248,22 @@ break_even_units = total_show_cost / avg_product_profit
 
 ---
 
+## Pull Request Review Expectations
+
+When reviewing pull requests, Claude must prioritize:
+
+1. Preservation of deterministic pricing logic.
+2. Architectural separation:
+   - routers contain no business logic
+   - services contain calculations
+   - parsers remain isolated translators.
+3. Compliance with PROJECT.md milestone ordering.
+4. Backwards compatibility with existing API endpoints.
+5. Successful execution of `tools/verify_project.py`.
+
+Suggestions that introduce SaaS patterns, authentication,
+cloud dependencies, or unnecessary infrastructure must be rejected.
+
 ## Explicit Non-Goals (Permanent Constraints)
 
 The following must NEVER be added unless explicitly requested:
