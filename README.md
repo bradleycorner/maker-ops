@@ -346,7 +346,7 @@ Attend Show → POST /shows/ → POST /shows/{id}/sales → GET /analytics/shows
 
 | Document | Description |
 |---|---|
-| [Test Status](docs/test-status.md) | Milestone verification record and verified capability baseline |
+| [Test Status](docs/TEST_STATUS.md) | Milestone verification record and verified capability baseline |
 | [FDM Cost Engine](docs/fdm-maker-cost-engine.md) | Functional design model and pricing formula specification |
 | [Database Schema](docs/database-schema.md) | Full schema definition for all 7 tables |
 | [Project Structure](docs/project-structure.md) | Repository layout and component responsibilities |
