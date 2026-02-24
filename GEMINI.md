@@ -25,6 +25,9 @@ Primary goals:
   - `EngineeringAsset` and `ProductAsset` models/schemas added.
   - Cost engine updated to include amortized design labor.
   - Verification script updated and passing.
+- **Milestone 4 (Design Comparison Engine):** IN PROGRESS.
+  - Specification drafted in `docs/milestone-4-design-comparison.md`.
+  - Goal: Implement `POST /products/compare` and "Profit per Print Hour" metric.
 
 ---
 
