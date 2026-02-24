@@ -377,6 +377,64 @@ def verify_automation():
         return False
 
 
+def verify_geometry_estimation():
+    """Verify that geometry-based estimation calculates accurate costs."""
+    # 1. Setup machine and material
+    machine_data = {
+        "name": f"Geo Printer {uuid.uuid4().hex[:6]}",
+        "machine_type": "FDM",
+        "purchase_cost": 1000.0,
+        "lifetime_hours": 1000.0,
+        "maintenance_factor": 0.0
+    }
+    req = urllib.request.Request(
+        f"{SERVER_URL}/machines/",
+        data=json.dumps(machine_data).encode('utf-8'),
+        headers={'Content-Type': 'application/json'}
+    )
+    with urllib.request.urlopen(req) as response:
+        machine = json.loads(response.read())
+
+    material_data = {
+        "name": f"Geo Material {uuid.uuid4().hex[:6]}",
+        "cost_per_gram": 0.02
+    }
+    req = urllib.request.Request(
+        f"{SERVER_URL}/materials/",
+        data=json.dumps(material_data).encode('utf-8'),
+        headers={'Content-Type': 'application/json'}
+    )
+    with urllib.request.urlopen(req) as response:
+        material = json.loads(response.read())
+
+    # 2. Estimate from Geometry
+    # Part: 100,000 mm3, 10% infill = 10,000 mm3 actual
+    # density 1.25 -> 12.5g
+    # flow rate 10.0 mm3/s -> 1000s -> 0.2778 hours
+    
+    # machine_cost = 0.2778 * 1 = 0.2778
+    # material_cost = 12.5 * 0.02 * 1.1 = 0.275
+    # true_cost = 0.2778 + 0.275 = 0.5528 -> 0.55
+    
+    geo_data = {
+        "name": "Geo Part",
+        "volume_mm3": 100000.0,
+        "material_id": material["id"],
+        "machine_id": machine["id"],
+        "infill_percentage": 10.0,
+        "volumetric_flow_rate": 10.0
+    }
+    req = urllib.request.Request(
+        f"{SERVER_URL}/products/estimate-from-geometry",
+        data=json.dumps(geo_data).encode('utf-8'),
+        headers={'Content-Type': 'application/json'}
+    )
+    with urllib.request.urlopen(req) as response:
+        result = json.loads(response.read())
+        # Check nested calculation result
+        return result["calculation"]["true_cost"] == 0.55
+
+
 def run_checks():
     checks = {
         "health": "/docs",
@@ -421,6 +479,14 @@ def run_checks():
     except Exception as e:
         print(f"Automation verification failed with error: {e}")
         failures.append("automation_error")
+
+    print("Checking Geometry Estimation...")
+    try:
+        if not verify_geometry_estimation():
+            failures.append("geometry_estimation_accuracy")
+    except Exception as e:
+        print(f"Geometry estimation failed with error: {e}")
+        failures.append("geometry_estimation_error")
 
     return failures
 

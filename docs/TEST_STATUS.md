@@ -83,6 +83,7 @@ A local HTTP API that accepts structured input, persists data to a local databas
 | 3 — Engineering Asset System | 2026-02-23 | 58 | 58 | 0 | #3 → main |
 | 4 — Design Comparison Engine | 2026-02-23 | 61 | 61 | 0 | #4 → main |
 | 5 — Automation Interfaces | 2026-02-23 | 65 | 65 | 0 | #5 → main |
+| 6 — CAD Integration Foundations | 2026-02-24 | 69 | 69 | 0 | #6 → main |
 
 ---
 
@@ -147,3 +148,19 @@ A local HTTP API that accepts structured input, persists data to a local databas
 - Headless execution produces machine-readable JSON output
 - Sample FreeCAD macro demonstrates external integration
 - Verification script confirms CLI-to-API communication
+
+---
+
+## Milestone 6 — CAD Integration Foundations
+
+**Completed:** 2026-02-24
+**Status:** ✅ Closed
+
+### Verified Capabilities
+
+**Geometry-based Costing**
+- Estimate cost directly from CAD volume and material density
+- Estimate print time using volumetric flow rate (mm³/s)
+- Store CAD metadata (volume, dimensions, density) in product records
+- Create products directly from geometric estimations via `save: true`
+- Material-specific density and machine-specific flow rate defaults are supported

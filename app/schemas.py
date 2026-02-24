@@ -13,6 +13,7 @@ class MachineCreate(BaseModel):
     purchase_cost: float
     lifetime_hours: float
     maintenance_factor: float
+    default_volumetric_flow_rate: Optional[float] = None
 
 
 class MachineRead(MachineCreate):
@@ -29,6 +30,7 @@ class MachineRead(MachineCreate):
 class MaterialCreate(BaseModel):
     name: str
     cost_per_gram: float
+    density_g_cm3: float = 1.25
     supplier: Optional[str] = None
 
 
@@ -105,6 +107,7 @@ class ProductCreate(BaseModel):
     machine_id: int
     materials: list[ProductMaterialCreate] = []
     asset_ids: list[int] = []
+    geometry_metadata: Optional[dict] = None
 
 
 class ProductRead(BaseModel):
@@ -118,6 +121,7 @@ class ProductRead(BaseModel):
     created_at: str
     product_materials: list[ProductMaterialRead] = []
     product_assets: list[ProductAssetRead] = []
+    geometry_metadata: Optional[dict] = None
 
     model_config = {"from_attributes": True}
 
@@ -239,6 +243,30 @@ class BatchCalculationRequest(CalculationRequest):
 
 class BatchCalculationResponse(BaseModel):
     results: dict[int, CalculationResult]
+
+
+# ---------------------------------------------------------------------------
+# CAD / Geometry
+# ---------------------------------------------------------------------------
+
+class GeometryEstimationRequest(CalculationRequest):
+    name: str
+    volume_mm3: float
+    material_id: int
+    machine_id: int
+    infill_percentage: float = 20.0
+    volumetric_flow_rate: Optional[float] = None  # mm3/s
+    labor_minutes: int = 0
+    hardware_cost: float = 0.0
+    dimensions_mm: Optional[dict[str, float]] = None
+    save: bool = False
+
+
+class GeometryEstimationResponse(BaseModel):
+    calculation: CalculationResult
+    estimated_mass_g: float
+    estimated_print_hours: float
+    geometry_metadata: dict
 
 
 # ---------------------------------------------------------------------------
