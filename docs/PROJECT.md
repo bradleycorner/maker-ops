@@ -199,19 +199,18 @@ docs/TEST_STATUS.md
 
 ---
 
-### 🔜 Milestone 6 — CAD Integration Foundations
+### 🚧 Milestone 6 — CAD Integration Foundations
 
 **Goal:** Bridge parametric design and economic evaluation.
 
-Possible features:
+Capabilities:
 
-- parameter export ingestion
-- CAD metadata costing
-- geometry-aware estimation
+- Geometry estimation endpoint (`estimate-from-geometry`)
+- Volumetric flow-rate time calculation
+- Part mass calculation from CAD volume
+- CAD metadata storage
 
-This milestone prepares for future FreeCAD tooling.
-
-Planned document:
+Reference:
 ```
 docs/milestone-6-cad-integration.md
 ```
