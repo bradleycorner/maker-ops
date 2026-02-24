@@ -179,18 +179,18 @@ docs/TEST_STATUS.md
 
 ---
 
-### 🔜 Milestone 5 — Automation Interfaces
+### 🚧 Milestone 5 — Automation Interfaces
 
 **Goal:** Allow external tools to query Maker-Ops programmatically.
 
 Targets:
 
-- CLI access
+- CLI access (`maker-ops-cli.py`)
 - FreeCAD macro integration
 - Batch estimation workflows
 - Script-driven analysis
 
-Planned document:
+Reference:
 ```
 docs/milestone-5-automation.md
 ```

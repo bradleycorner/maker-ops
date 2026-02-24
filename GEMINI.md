@@ -29,6 +29,9 @@ Primary goals:
   - `POST /products/compare` implemented for side-by-side analysis.
   - "Profit per Print Hour" metric added to cost engine.
   - Verification script updated and passing.
+- **Milestone 5 (Automation Interfaces):** IN PROGRESS.
+  - Specification drafted in `docs/milestone-5-automation.md`.
+  - Goal: Implement `maker-ops-cli.py` and batch processing endpoint.
 
 ---
 
