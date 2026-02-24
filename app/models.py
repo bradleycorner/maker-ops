@@ -51,6 +51,7 @@ class Product(Base):
 
     machine = relationship("Machine", back_populates="products")
     product_materials = relationship("ProductMaterial", back_populates="product")
+    product_assets = relationship("ProductAsset", back_populates="product")
     show_sales = relationship("ShowSale", back_populates="product")
     design_experiments = relationship("DesignExperiment", back_populates="product")
 
@@ -67,6 +68,34 @@ class ProductMaterial(Base):
 
     product = relationship("Product", back_populates="product_materials")
     material = relationship("Material", back_populates="product_materials")
+
+
+class EngineeringAsset(Base):
+    """Reusable CAD components (mounts, hubs, reflectors) as amortized engineering capital."""
+
+    __tablename__ = "engineering_assets"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)
+    design_hours = Column(Float, nullable=False)
+    labor_rate = Column(Float, nullable=False)
+    target_uses = Column(Integer, nullable=False)
+    created_at = Column(String, default=lambda: datetime.now(timezone.utc).isoformat())
+
+    product_assets = relationship("ProductAsset", back_populates="asset")
+
+
+class ProductAsset(Base):
+    """Join table recording which engineering assets are used by a product."""
+
+    __tablename__ = "product_assets"
+
+    id = Column(Integer, primary_key=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    asset_id = Column(Integer, ForeignKey("engineering_assets.id"), nullable=False)
+
+    product = relationship("Product", back_populates="product_assets")
+    asset = relationship("EngineeringAsset", back_populates="product_assets")
 
 
 class Show(Base):

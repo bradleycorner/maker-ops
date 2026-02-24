@@ -58,6 +58,41 @@ class ProductMaterialRead(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# EngineeringAsset
+# ---------------------------------------------------------------------------
+
+class EngineeringAssetCreate(BaseModel):
+    name: str
+    design_hours: float
+    labor_rate: float
+    target_uses: int
+
+
+class EngineeringAssetRead(EngineeringAssetCreate):
+    id: int
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
+# ProductAsset
+# ---------------------------------------------------------------------------
+
+class ProductAssetCreate(BaseModel):
+    asset_id: int
+
+
+class ProductAssetRead(BaseModel):
+    id: int
+    product_id: int
+    asset_id: int
+    asset: EngineeringAssetRead
+
+    model_config = {"from_attributes": True}
+
+
+# ---------------------------------------------------------------------------
 # Product
 # ---------------------------------------------------------------------------
 
@@ -69,6 +104,7 @@ class ProductCreate(BaseModel):
     hardware_cost: float = 0.0
     machine_id: int
     materials: list[ProductMaterialCreate] = []
+    asset_ids: list[int] = []
 
 
 class ProductRead(BaseModel):
@@ -81,6 +117,7 @@ class ProductRead(BaseModel):
     machine_id: int
     created_at: str
     product_materials: list[ProductMaterialRead] = []
+    product_assets: list[ProductAssetRead] = []
 
     model_config = {"from_attributes": True}
 
@@ -156,10 +193,40 @@ class CalculationResult(BaseModel):
     true_cost: float
     suggested_price: float
     profit_margin: float
+    profit_per_print_hour: float
     material_cost: float
     machine_cost: float
     labor_cost: float
+    asset_cost: float
     machine_hourly_rate: float
+
+
+# ---------------------------------------------------------------------------
+# Design Comparison
+# ---------------------------------------------------------------------------
+
+class ProductComparisonRequest(CalculationRequest):
+    product_a_id: int
+    product_b_id: int
+
+
+class ComparisonDetail(BaseModel):
+    name: str
+    true_cost: float
+    suggested_price: float
+    profit_per_print_hour: float
+
+
+class ComparisonDelta(BaseModel):
+    true_cost: float
+    profit_per_print_hour: float
+    better_variant: str  # "product_a" or "product_b"
+
+
+class ProductComparisonResponse(BaseModel):
+    product_a: ComparisonDetail
+    product_b: ComparisonDetail
+    delta: ComparisonDelta
 
 
 # ---------------------------------------------------------------------------
