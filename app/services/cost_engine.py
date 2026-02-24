@@ -14,6 +14,7 @@ from app.calculations import (
     calculate_machine_cost,
     calculate_material_cost,
     calculate_profit_margin,
+    calculate_profit_per_hour,
     calculate_suggested_price,
     calculate_true_cost,
 )
@@ -79,11 +80,17 @@ def compute_product_cost(
         true_cost=true_cost,
         suggested_price=suggested_price,
     )
+    profit_per_print_hour: float = calculate_profit_per_hour(
+        true_cost=true_cost,
+        suggested_price=suggested_price,
+        print_hours=print_hours,
+    )
 
     return {
         "true_cost": round(true_cost, 2),
         "suggested_price": round(suggested_price, 2),
         "profit_margin": profit_margin,
+        "profit_per_print_hour": round(profit_per_print_hour, 2),
         "material_cost": round(material_cost, 2),
         "machine_cost": round(machine_cost, 4),
         "labor_cost": round(labor_cost, 2),
