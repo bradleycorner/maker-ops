@@ -82,6 +82,7 @@ A local HTTP API that accepts structured input, persists data to a local databas
 | 2 — Open Slicer Ingestion | 2026-02-23 | 55 | 55 | 0 | #2 → main |
 | 3 — Engineering Asset System | 2026-02-23 | 58 | 58 | 0 | #3 → main |
 | 4 — Design Comparison Engine | 2026-02-23 | 61 | 61 | 0 | #4 → main |
+| 5 — Automation Interfaces | 2026-02-23 | 65 | 65 | 0 | #5 → main |
 
 ---
 
@@ -130,3 +131,19 @@ A local HTTP API that accepts structured input, persists data to a local databas
 - Comparison delta shows the difference in true cost and profit efficiency
 - Delta correctly identifies the "better" variant based on profit per machine hour
 - Engineering assets are correctly included in comparison calculations
+
+---
+
+## Milestone 5 — Automation Interfaces
+
+**Completed:** 2026-02-23
+**Status:** ✅ Closed
+
+### Verified Capabilities
+
+**Automation & Batching**
+- Batch calculation of multiple products in one request via `/automation/batch-calculate`
+- Dedicated CLI tool (`tools/maker_ops_cli.py`) supports list, calculate, compare, and upload
+- Headless execution produces machine-readable JSON output
+- Sample FreeCAD macro demonstrates external integration
+- Verification script confirms CLI-to-API communication

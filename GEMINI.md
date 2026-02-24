@@ -29,6 +29,12 @@ Primary goals:
   - `POST /products/compare` implemented for side-by-side analysis.
   - "Profit per Print Hour" metric added to cost engine.
   - Verification script updated and passing.
+- **Milestone 5 (Automation Interfaces):** COMPLETE.
+  - `maker-ops-cli.py` implemented for headless interaction.
+  - `POST /automation/batch-calculate` added for batch processing.
+  - Sample FreeCAD macro provided in `docs/macros/`.
+  - Verification script updated and passing.
+- **Milestone 6 (CAD Integration Foundations):** NOT STARTED.
 
 ---
 
