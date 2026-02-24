@@ -106,9 +106,10 @@ docs/TEST_STATUS.md
 
 ---
 
-### 🚧 Milestone 2 — Open Slicer Ingestion
+### ✅ Milestone 2 — Open Slicer Ingestion (Completed)
 
 **Goal:** Eliminate manual data entry.
+**Closed:** 2026-02-23 — Implementation and verification complete
 
 Capabilities:
 
@@ -121,6 +122,7 @@ Capabilities:
 Reference:
 ```
 docs/milestone-2-slicer-ingestion.md
+docs/TEST_STATUS.md
 ```
 
 Outcome:
@@ -131,13 +133,10 @@ Slice → Upload → Profitability
 
 ---
 
-### 🔜 Milestone 3 — Engineering Asset System
+### ✅ Milestone 3 — Engineering Asset System (Completed)
 
 **Goal:** Treat reusable CAD components as amortized engineering capital.
-
-Concept:
-
-Reusable parametric parts (mounts, hubs, reflectors) reduce future labor costs.
+**Closed:** 2026-02-23 — Implementation and verification complete
 
 Capabilities:
 
@@ -146,9 +145,10 @@ Capabilities:
 - Asset reuse accounting
 - Integration into product costing
 
-Planned document:
+Reference:
 ```
 docs/milestone-3-engineering-assets.md
+docs/TEST_STATUS.md
 ```
 
 ---

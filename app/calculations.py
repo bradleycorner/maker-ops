@@ -18,6 +18,15 @@ class MaterialUsage:
     cost_per_gram: float
 
 
+@dataclass
+class AssetUsage:
+    """Represents the amortized cost of an engineering asset."""
+
+    design_hours: float
+    labor_rate: float
+    target_uses: int
+
+
 def calculate_material_cost(
     materials: list[MaterialUsage],
     waste_factor: float = DEFAULT_WASTE_FACTOR,
@@ -55,18 +64,34 @@ def calculate_labor_cost(
     return (labor_minutes / 60.0) * target_hourly_rate
 
 
+def calculate_asset_cost(
+    design_hours: float,
+    labor_rate: float,
+    target_uses: int,
+) -> float:
+    """Return the amortized engineering asset cost for a single product unit.
+
+    Formula:
+        asset_unit_cost = (design_hours * labor_rate) / target_uses
+    """
+    if target_uses <= 0:
+        return 0.0
+    return (design_hours * labor_rate) / target_uses
+
+
 def calculate_true_cost(
     material_cost: float,
     machine_cost: float,
     labor_cost: float,
     hardware_cost: float,
+    asset_cost: float = 0.0,
 ) -> float:
     """Return the true unit cost from all cost components.
 
     Formula:
-        true_unit_cost = material_cost + machine_cost + labor_cost + hardware_cost
+        true_unit_cost = material_cost + machine_cost + labor_cost + hardware_cost + asset_cost
     """
-    return material_cost + machine_cost + labor_cost + hardware_cost
+    return material_cost + machine_cost + labor_cost + hardware_cost + asset_cost
 
 
 def calculate_suggested_price(
