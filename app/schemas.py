@@ -193,11 +193,40 @@ class CalculationResult(BaseModel):
     true_cost: float
     suggested_price: float
     profit_margin: float
+    profit_per_print_hour: float
     material_cost: float
     machine_cost: float
     labor_cost: float
     asset_cost: float
     machine_hourly_rate: float
+
+
+# ---------------------------------------------------------------------------
+# Design Comparison
+# ---------------------------------------------------------------------------
+
+class ProductComparisonRequest(CalculationRequest):
+    product_a_id: int
+    product_b_id: int
+
+
+class ComparisonDetail(BaseModel):
+    name: str
+    true_cost: float
+    suggested_price: float
+    profit_per_print_hour: float
+
+
+class ComparisonDelta(BaseModel):
+    true_cost: float
+    profit_per_print_hour: float
+    better_variant: str  # "product_a" or "product_b"
+
+
+class ProductComparisonResponse(BaseModel):
+    product_a: ComparisonDetail
+    product_b: ComparisonDetail
+    delta: ComparisonDelta
 
 
 # ---------------------------------------------------------------------------

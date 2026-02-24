@@ -207,6 +207,104 @@ def verify_asset_calculation():
         return result["true_cost"] == 39.5 and result["asset_cost"] == 5.0
 
 
+def verify_comparison_calculation():
+    """Verify that product comparison accurately calculates deltas."""
+    # 1. Create a machine
+    machine_data = {
+        "name": f"Comp Printer {uuid.uuid4().hex[:6]}",
+        "machine_type": "FDM",
+        "purchase_cost": 1000.0,
+        "lifetime_hours": 1000.0,
+        "maintenance_factor": 0.0
+    }
+    req = urllib.request.Request(
+        f"{SERVER_URL}/machines/",
+        data=json.dumps(machine_data).encode('utf-8'),
+        headers={'Content-Type': 'application/json'}
+    )
+    with urllib.request.urlopen(req) as response:
+        machine = json.loads(response.read())
+
+    # 2. Create a material
+    material_data = {
+        "name": f"Comp Material {uuid.uuid4().hex[:6]}",
+        "cost_per_gram": 0.02
+    }
+    req = urllib.request.Request(
+        f"{SERVER_URL}/materials/",
+        data=json.dumps(material_data).encode('utf-8'),
+        headers={'Content-Type': 'application/json'}
+    )
+    with urllib.request.urlopen(req) as response:
+        material = json.loads(response.read())
+
+    # 3. Create two products
+    # Variant A: 10 hours, 100g
+    # machine_cost = 10 * 1 = 10
+    # material_cost = 100 * 0.02 * 1.1 = 2.2
+    # labor_cost = 1 * 25 = 25
+    # true_cost = 10 + 2.2 + 25 = 37.2
+    # suggested_price = 37.2 * 2.7 = 100.44
+    # profit = 100.44 - 37.2 = 63.24
+    # profit_per_hour = 63.24 / 10 = 6.32
+    product_a_data = {
+        "name": "Variant A",
+        "print_hours": 10.0,
+        "labor_minutes": 60,
+        "machine_id": machine["id"],
+        "materials": [{"material_id": material["id"], "grams_used": 100.0}]
+    }
+    
+    # Variant B: 5 hours, 100g
+    # machine_cost = 5 * 1 = 5
+    # material_cost = 100 * 0.02 * 1.1 = 2.2
+    # labor_cost = 1 * 25 = 25
+    # true_cost = 5 + 2.2 + 25 = 32.2
+    # suggested_price = 32.2 * 2.7 = 86.94
+    # profit = 86.94 - 32.2 = 54.74
+    # profit_per_hour = 54.74 / 5 = 10.95 (approx)
+    product_b_data = {
+        "name": "Variant B",
+        "print_hours": 5.0,
+        "labor_minutes": 60,
+        "machine_id": machine["id"],
+        "materials": [{"material_id": material["id"], "grams_used": 100.0}]
+    }
+
+    def create_product(data):
+        req = urllib.request.Request(
+            f"{SERVER_URL}/products/",
+            data=json.dumps(data).encode('utf-8'),
+            headers={'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(req) as response:
+            return json.loads(response.read())
+
+    prod_a = create_product(product_a_data)
+    prod_b = create_product(product_b_data)
+
+    # 4. Compare
+    compare_data = {
+        "product_a_id": prod_a["id"],
+        "product_b_id": prod_b["id"]
+    }
+    req = urllib.request.Request(
+        f"{SERVER_URL}/products/compare",
+        data=json.dumps(compare_data).encode('utf-8'),
+        headers={'Content-Type': 'application/json'}
+    )
+    with urllib.request.urlopen(req) as response:
+        result = json.loads(response.read())
+        
+        # deltas:
+        # true_cost_delta = 32.2 - 37.2 = -5.0
+        # profit_per_hour_delta = 10.95 - 6.32 = 4.63
+        return (
+            result["delta"]["true_cost"] == -5.0 and
+            result["delta"]["better_variant"] == "product_b"
+        )
+
+
 def run_checks():
     checks = {
         "health": "/docs",
@@ -235,6 +333,14 @@ def run_checks():
     except Exception as e:
         print(f"Engineering Asset calculation failed with error: {e}")
         failures.append("asset_calculation_error")
+
+    print("Checking Design Comparison calculation...")
+    try:
+        if not verify_comparison_calculation():
+            failures.append("comparison_calculation_accuracy")
+    except Exception as e:
+        print(f"Design Comparison calculation failed with error: {e}")
+        failures.append("comparison_calculation_error")
 
     return failures
 

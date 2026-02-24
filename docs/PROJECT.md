@@ -153,9 +153,10 @@ docs/TEST_STATUS.md
 
 ---
 
-### 🚧 Milestone 4 — Design Comparison Engine
+### ✅ Milestone 4 — Design Comparison Engine (Completed)
 
 **Goal:** Enable economic comparison between design variants.
+**Closed:** 2026-02-23 — Implementation and verification complete
 
 Capabilities:
 
@@ -173,6 +174,7 @@ Design A vs Design B → profitability delta
 Reference:
 ```
 docs/milestone-4-design-comparison.md
+docs/TEST_STATUS.md
 ```
 
 ---

@@ -81,6 +81,7 @@ A local HTTP API that accepts structured input, persists data to a local databas
 | 1 — Initial backend scaffold | 2026-02-23 | 51 | 51 | 0 | #1 → main |
 | 2 — Open Slicer Ingestion | 2026-02-23 | 55 | 55 | 0 | #2 → main |
 | 3 — Engineering Asset System | 2026-02-23 | 58 | 58 | 0 | #3 → main |
+| 4 — Design Comparison Engine | 2026-02-23 | 61 | 61 | 0 | #4 → main |
 
 ---
 
@@ -113,3 +114,19 @@ A local HTTP API that accepts structured input, persists data to a local databas
 - Cost engine correctly includes `asset_cost` in `true_unit_cost`
 - Asset cost is calculated as `(design_hours * labor_rate) / target_uses`
 - Product cost calculations reflect the sum of all attached engineering assets
+
+---
+
+## Milestone 4 — Design Comparison Engine
+
+**Completed:** 2026-02-23
+**Status:** ✅ Closed
+
+### Verified Capabilities
+
+**Design Comparison**
+- Side-by-side comparison of two products is supported via `/products/compare`
+- `profit_per_print_hour` is calculated and reported for each product
+- Comparison delta shows the difference in true cost and profit efficiency
+- Delta correctly identifies the "better" variant based on profit per machine hour
+- Engineering assets are correctly included in comparison calculations

@@ -13,6 +13,10 @@ from app.schemas import (
     DesignExperimentCreate,
     DesignExperimentRead,
     ProductAssetRead,
+    ProductComparisonRequest,
+    ProductComparisonResponse,
+    ComparisonDetail,
+    ComparisonDelta,
     ProductCreate,
     ProductRead,
 )
@@ -218,6 +222,77 @@ def list_product_assets(product_id: int, db: Session = Depends(get_db)):
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return product.product_assets
+
+
+@router.post("/compare", response_model=ProductComparisonResponse)
+def compare_products(
+    request: ProductComparisonRequest,
+    db: Session = Depends(get_db),
+) -> ProductComparisonResponse:
+    """Compare two products side-by-side."""
+    def get_calc(product_id: int):
+        product = db.query(models.Product).filter(models.Product.id == product_id).first()
+        if not product:
+            raise HTTPException(status_code=404, detail=f"Product {product_id} not found")
+        
+        machine = product.machine
+        materials = [
+            MaterialUsage(grams_used=pm.grams_used, cost_per_gram=pm.material.cost_per_gram)
+            for pm in product.product_materials
+        ]
+        assets = [
+            AssetUsage(
+                design_hours=pa.asset.design_hours,
+                labor_rate=pa.asset.labor_rate,
+                target_uses=pa.asset.target_uses
+            )
+            for pa in product.product_assets
+        ]
+        
+        res = compute_product_cost(
+            print_hours=product.print_hours,
+            labor_minutes=product.labor_minutes,
+            hardware_cost=product.hardware_cost,
+            purchase_cost=machine.purchase_cost,
+            lifetime_hours=machine.lifetime_hours,
+            maintenance_factor=machine.maintenance_factor,
+            materials=materials,
+            assets=assets,
+            target_hourly_rate=request.target_hourly_rate,
+            pricing_multiplier=request.pricing_multiplier,
+            waste_factor=request.waste_factor,
+        )
+        return product.name, res
+
+    name_a, res_a = get_calc(request.product_a_id)
+    name_b, res_b = get_calc(request.product_b_id)
+
+    detail_a = ComparisonDetail(
+        name=name_a,
+        true_cost=res_a["true_cost"],
+        suggested_price=res_a["suggested_price"],
+        profit_per_print_hour=res_a["profit_per_print_hour"]
+    )
+    detail_b = ComparisonDetail(
+        name=name_b,
+        true_cost=res_b["true_cost"],
+        suggested_price=res_b["suggested_price"],
+        profit_per_print_hour=res_b["profit_per_print_hour"]
+    )
+
+    better = "product_a" if res_a["profit_per_print_hour"] >= res_b["profit_per_print_hour"] else "product_b"
+
+    delta = ComparisonDelta(
+        true_cost=round(res_b["true_cost"] - res_a["true_cost"], 2),
+        profit_per_print_hour=round(res_b["profit_per_print_hour"] - res_a["profit_per_print_hour"], 2),
+        better_variant=better
+    )
+
+    return ProductComparisonResponse(
+        product_a=detail_a,
+        product_b=detail_b,
+        delta=delta
+    )
 
 
 # ---------------------------------------------------------------------------

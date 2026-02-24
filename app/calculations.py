@@ -114,3 +114,18 @@ def calculate_profit_margin(
     if suggested_price == 0.0:
         return 0.0
     return round(((suggested_price - true_cost) / suggested_price) * 100, 2)
+
+
+def calculate_profit_per_hour(
+    true_cost: float,
+    suggested_price: float,
+    print_hours: float,
+) -> float:
+    """Return the profit earned per hour of machine time.
+
+    Formula:
+        profit_per_print_hour = (suggested_price - true_cost) / print_hours
+    """
+    if print_hours <= 0:
+        return 0.0
+    return (suggested_price - true_cost) / print_hours
