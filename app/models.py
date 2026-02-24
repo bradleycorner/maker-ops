@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, ForeignKey, Integer, Float, String, Text
+from sqlalchemy import Column, ForeignKey, Integer, Float, String, Text, JSON
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -17,6 +17,7 @@ class Machine(Base):
     purchase_cost = Column(Float, nullable=False)
     lifetime_hours = Column(Float, nullable=False)
     maintenance_factor = Column(Float, nullable=False)
+    default_volumetric_flow_rate = Column(Float, nullable=True)  # mm3/s
     created_at = Column(String, default=lambda: datetime.now(timezone.utc).isoformat())
 
     products = relationship("Product", back_populates="machine")
@@ -30,6 +31,7 @@ class Material(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     cost_per_gram = Column(Float, nullable=False)
+    density_g_cm3 = Column(Float, nullable=False, default=1.25)
     supplier = Column(String)
 
     product_materials = relationship("ProductMaterial", back_populates="material")
@@ -47,6 +49,7 @@ class Product(Base):
     labor_minutes = Column(Integer, nullable=False)
     hardware_cost = Column(Float, nullable=False, default=0.0)
     machine_id = Column(Integer, ForeignKey("machines.id"), nullable=False)
+    geometry_metadata = Column(JSON, nullable=True)
     created_at = Column(String, default=lambda: datetime.now(timezone.utc).isoformat())
 
     machine = relationship("Machine", back_populates="products")

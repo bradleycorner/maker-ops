@@ -129,3 +129,38 @@ def calculate_profit_per_hour(
     if print_hours <= 0:
         return 0.0
     return (suggested_price - true_cost) / print_hours
+
+
+# ---------------------------------------------------------------------------
+# Geometric Estimation
+# ---------------------------------------------------------------------------
+
+def calculate_mass_from_volume(
+    volume_mm3: float,
+    material_density_g_cm3: float = 1.25,  # PLA default
+    infill_percentage: float = 20.0,
+) -> float:
+    """Return estimated mass in grams from geometry.
+
+    Formula:
+        mass = (volume / 1000) * density * (infill / 100)
+    """
+    volume_cm3 = volume_mm3 / 1000.0
+    return volume_cm3 * material_density_g_cm3 * (infill_percentage / 100.0)
+
+
+def calculate_print_time_from_flow(
+    volume_mm3: float,
+    volumetric_flow_rate_mm3_s: float = 10.0,
+    infill_percentage: float = 20.0,
+) -> float:
+    """Return estimated print time in hours from geometry.
+
+    Formula:
+        hours = (volume * (infill/100) / flow_rate) / 3600
+    """
+    if volumetric_flow_rate_mm3_s <= 0:
+        return 0.0
+    actual_volume = volume_mm3 * (infill_percentage / 100.0)
+    seconds = actual_volume / volumetric_flow_rate_mm3_s
+    return seconds / 3600.0

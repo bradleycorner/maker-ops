@@ -4,7 +4,12 @@ from fastapi import APIRouter, Body, Depends, HTTPException, UploadFile, File, F
 from sqlalchemy.orm import Session
 
 from app import models
-from app.calculations import AssetUsage, MaterialUsage
+from app.calculations import (
+    AssetUsage,
+    MaterialUsage,
+    calculate_mass_from_volume,
+    calculate_print_time_from_flow,
+)
 from app.database import get_db
 from app.parsers.registry import parse_gcode
 from app.schemas import (
@@ -12,6 +17,8 @@ from app.schemas import (
     CalculationResult,
     DesignExperimentCreate,
     DesignExperimentRead,
+    GeometryEstimationRequest,
+    GeometryEstimationResponse,
     ProductAssetRead,
     ProductComparisonRequest,
     ProductComparisonResponse,
@@ -83,6 +90,92 @@ async def calculate_from_gcode(
     )
 
     return result
+
+
+@router.post("/estimate-from-geometry", response_model=GeometryEstimationResponse)
+def estimate_from_geometry(
+    request: GeometryEstimationRequest,
+    db: Session = Depends(get_db),
+) -> GeometryEstimationResponse:
+    """Estimate costs directly from CAD geometry (volume, dimensions)."""
+    # 1. Get machine and material
+    machine = db.query(models.Machine).filter(models.Machine.id == request.machine_id).first()
+    if not machine:
+        raise HTTPException(status_code=404, detail="Machine not found")
+    
+    material = db.query(models.Material).filter(models.Material.id == request.material_id).first()
+    if not material:
+        raise HTTPException(status_code=404, detail="Material not found")
+
+    # 2. Determine flow rate and density
+    flow_rate = request.volumetric_flow_rate or machine.default_volumetric_flow_rate or 10.0
+    density = material.density_g_cm3 or 1.25
+
+    # 3. Estimate mass and time
+    mass_g = calculate_mass_from_volume(
+        volume_mm3=request.volume_mm3,
+        material_density_g_cm3=density,
+        infill_percentage=request.infill_percentage
+    )
+    hours = calculate_print_time_from_flow(
+        volume_mm3=request.volume_mm3,
+        volumetric_flow_rate_mm3_s=flow_rate,
+        infill_percentage=request.infill_percentage
+    )
+
+    # 4. Compute cost
+    materials = [
+        MaterialUsage(grams_used=mass_g, cost_per_gram=material.cost_per_gram)
+    ]
+    
+    res = compute_product_cost(
+        print_hours=hours,
+        labor_minutes=request.labor_minutes,
+        hardware_cost=request.hardware_cost,
+        purchase_cost=machine.purchase_cost,
+        lifetime_hours=machine.lifetime_hours,
+        maintenance_factor=machine.maintenance_factor,
+        materials=materials,
+        assets=[],
+        target_hourly_rate=request.target_hourly_rate,
+        pricing_multiplier=request.pricing_multiplier,
+        waste_factor=request.waste_factor,
+    )
+    
+    metadata = {
+        "volume_mm3": request.volume_mm3,
+        "infill_percentage": request.infill_percentage,
+        "volumetric_flow_rate": flow_rate,
+        "estimated_density": density,
+        "dimensions_mm": request.dimensions_mm or {}
+    }
+
+    if request.save:
+        db_product = models.Product(
+            name=request.name,
+            print_hours=hours,
+            labor_minutes=request.labor_minutes,
+            hardware_cost=request.hardware_cost,
+            machine_id=request.machine_id,
+            geometry_metadata=metadata
+        )
+        db.add(db_product)
+        db.flush()
+        db.add(
+            models.ProductMaterial(
+                product_id=db_product.id,
+                material_id=request.material_id,
+                grams_used=mass_g,
+            )
+        )
+        db.commit()
+
+    return GeometryEstimationResponse(
+        calculation=CalculationResult(**res),
+        estimated_mass_g=round(mass_g, 2),
+        estimated_print_hours=round(hours, 2),
+        geometry_metadata=metadata
+    )
 
 
 @router.post("/", response_model=ProductRead, status_code=201)
