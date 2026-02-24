@@ -34,7 +34,11 @@ Primary goals:
   - `POST /automation/batch-calculate` added for batch processing.
   - Sample FreeCAD macro provided in `docs/macros/`.
   - Verification script updated and passing.
-- **Milestone 6 (CAD Integration Foundations):** NOT STARTED.
+- **Milestone 6 (CAD Integration Foundations):** COMPLETE.
+  - Geometry estimation endpoint (`estimate-from-geometry`) implemented.
+  - Material-specific density and machine-specific flow rate support added.
+  - Product creation directly from geometric estimation supported.
+  - Verification script updated and passing.
 
 ---
 
