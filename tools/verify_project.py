@@ -305,6 +305,78 @@ def verify_comparison_calculation():
         )
 
 
+def verify_automation():
+    """Verify batch endpoint and CLI tool."""
+    # 1. Setup Data
+    machine_data = {
+        "name": f"Auto Printer {uuid.uuid4().hex[:6]}",
+        "machine_type": "FDM",
+        "purchase_cost": 500.0,
+        "lifetime_hours": 500.0,
+        "maintenance_factor": 0.0
+    }
+    req = urllib.request.Request(
+        f"{SERVER_URL}/machines/",
+        data=json.dumps(machine_data).encode('utf-8'),
+        headers={'Content-Type': 'application/json'}
+    )
+    with urllib.request.urlopen(req) as response:
+        machine = json.loads(response.read())
+
+    def create_prod(name, hours):
+        data = {
+            "name": name,
+            "print_hours": hours,
+            "labor_minutes": 0,
+            "machine_id": machine["id"],
+            "materials": []
+        }
+        r = urllib.request.Request(
+            f"{SERVER_URL}/products/",
+            data=json.dumps(data).encode('utf-8'),
+            headers={'Content-Type': 'application/json'}
+        )
+        with urllib.request.urlopen(r) as resp:
+            return json.loads(resp.read())
+
+    p1 = create_prod("Auto P1", 1.0)
+    p2 = create_prod("Auto P2", 2.0)
+
+    # 2. Verify Batch Endpoint
+    batch_data = {"product_ids": [p1["id"], p2["id"]]}
+    req = urllib.request.Request(
+        f"{SERVER_URL}/automation/batch-calculate",
+        data=json.dumps(batch_data).encode('utf-8'),
+        headers={'Content-Type': 'application/json'}
+    )
+    with urllib.request.urlopen(req) as response:
+        batch_res = json.loads(response.read())
+        if len(batch_res["results"]) != 2:
+            return False
+
+    # 3. Verify CLI (using subprocess)
+    try:
+        # Test CLI 'list'
+        cp = subprocess.run(
+            [sys.executable, "tools/maker_ops_cli.py", "list"],
+            capture_output=True, text=True, check=True
+        )
+        if "Auto P1" not in cp.stdout:
+            return False
+
+        # Test CLI 'compare'
+        cp = subprocess.run(
+            [sys.executable, "tools/maker_ops_cli.py", "compare", str(p1["id"]), str(p2["id"])],
+            capture_output=True, text=True, check=True
+        )
+        if "better_variant" not in cp.stdout:
+            return False
+            
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
 def run_checks():
     checks = {
         "health": "/docs",
@@ -341,6 +413,14 @@ def run_checks():
     except Exception as e:
         print(f"Design Comparison calculation failed with error: {e}")
         failures.append("comparison_calculation_error")
+
+    print("Checking Automation (Batch/CLI)...")
+    try:
+        if not verify_automation():
+            failures.append("automation_failure")
+    except Exception as e:
+        print(f"Automation verification failed with error: {e}")
+        failures.append("automation_error")
 
     return failures
 

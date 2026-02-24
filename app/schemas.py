@@ -230,6 +230,18 @@ class ProductComparisonResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Automation / Batch
+# ---------------------------------------------------------------------------
+
+class BatchCalculationRequest(CalculationRequest):
+    product_ids: list[int]
+
+
+class BatchCalculationResponse(BaseModel):
+    results: dict[int, CalculationResult]
+
+
+# ---------------------------------------------------------------------------
 # Analytics
 # ---------------------------------------------------------------------------
 
