@@ -153,7 +153,7 @@ A local HTTP API that accepts structured input, persists data to a local databas
 
 ## Milestone 6 — CAD Integration Foundations
 
-**Completed:** 2026-02-24
+**Completed:** 2026-02-25
 **Status:** ✅ Closed
 
 ### Verified Capabilities
@@ -164,3 +164,13 @@ A local HTTP API that accepts structured input, persists data to a local databas
 - Store CAD metadata (volume, dimensions, density) in product records
 - Create products directly from geometric estimations via `save: true`
 - Material-specific density and machine-specific flow rate defaults are supported
+
+**FreeCAD Workbench (`freecad/Mod/MakerOps/`)**
+- Workbench registers and appears as "Maker-Ops" in FreeCAD 1.1 RC2
+- Estimate command opens a Qt dialog with per-body breakdown and summary totals
+- Multi-select supported — each body gets its own section; totals roll up to summary
+- Live Mode attaches a document observer; prints one-line cost update to Report View on every shape change including real bounding box dimensions
+- PySide2/PySide6 dialog with monospace formatting
+
+**Specification**
+- FDM v1.1 addendum (`docs/fdm-addendum-print-process-normalization.md`) defines the Print Process Normalization layer architecture
