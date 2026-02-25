@@ -199,9 +199,10 @@ docs/TEST_STATUS.md
 
 ---
 
-### 🚧 Milestone 6 — CAD Integration Foundations
+### ✅ Milestone 6 — CAD Integration Foundations (Completed)
 
 **Goal:** Bridge parametric design and economic evaluation.
+**Closed:** 2026-02-25 — PR #15 → `develop`, PR #16 → `main`
 
 Capabilities:
 
@@ -209,10 +210,13 @@ Capabilities:
 - Volumetric flow-rate time calculation
 - Part mass calculation from CAD volume
 - CAD metadata storage
+- FreeCAD workbench (`freecad/Mod/MakerOps/`) with live mode and cost estimate dialog
+- Print Process Normalization specification (FDM v1.1 addendum)
 
 Reference:
 ```
 docs/milestone-6-cad-integration.md
+docs/fdm-addendum-print-process-normalization.md
 ```
 
 ---
