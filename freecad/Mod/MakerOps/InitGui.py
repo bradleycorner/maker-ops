@@ -5,6 +5,11 @@ import FreeCADGui as Gui
 
 print("Maker-Ops: Loading workbench...")
 
+# Active print profile selected by the user for this session.
+# None means the profile picker will appear on the next Estimate call.
+_active_profile_id = None
+_active_profile_name = ""
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -32,7 +37,19 @@ def _extract_shape_data(obj):
     return vol, dims
 
 
-def _call_api(name, vol, dims):
+def _fetch_profiles():
+    """Return list of print profiles from API, or [] on failure."""
+    import json, urllib.request
+    try:
+        with urllib.request.urlopen(
+            "http://127.0.0.1:8000/print-profiles/", timeout=2
+        ) as r:
+            return json.loads(r.read().decode())
+    except Exception:
+        return []
+
+
+def _call_api(name, vol, dims, profile_id=None, color_changes=0):
     """POST to /products/estimate-from-geometry. Returns response dict."""
     import json, urllib.request  # import inside for FreeCAD scoping safety
     url = "http://127.0.0.1:8000/products/estimate-from-geometry"
@@ -43,7 +60,10 @@ def _call_api(name, vol, dims):
         "material_id": 1,
         "dimensions_mm": dims,
         "save": False,
+        "color_changes": color_changes,
     }
+    if profile_id is not None:
+        payload["print_profile_id"] = profile_id
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         url, data=data, headers={"Content-Type": "application/json"}, method="POST"
@@ -52,12 +72,13 @@ def _call_api(name, vol, dims):
         return json.loads(r.read().decode())
 
 
-def _show_dialog(body_results):
+def _show_dialog(body_results, profile_name=""):
     """
     Show a Qt dialog with per-body cost breakdown and a totals summary.
 
     body_results: list of (label, vol, dims, api_response) tuples.
                   On API error the api_response is {"error": "..."}.
+    profile_name: display name of the active print profile (empty = M6 path).
     """
     try:
         from PySide2 import QtWidgets, QtGui
@@ -91,6 +112,7 @@ def _show_dialog(body_results):
         srp    = calc.get("suggested_price", 0.0)
         margin = calc.get("profit_margin", 0.0)
         pph    = calc.get("profit_per_print_hour", 0.0)
+        norm   = res.get("normalization")
 
         total_mass  += mass
         total_hours += hours
@@ -98,9 +120,24 @@ def _show_dialog(body_results):
         total_srp   += srp
         ok_count    += 1
 
+        if profile_name:
+            lines.append(f"  Profile:      {profile_name}")
         lines.append(f"  Volume:       {vol:>12,.1f} mm³")
-        lines.append(f"  Dimensions:   {dims['x']:.1f} × {dims['y']:.1f} × {dims['z']:.1f} mm")
-        lines.append(f"  Mass:         {mass:>12.2f} g")
+        if dims:
+            lines.append(f"  Dimensions:   {dims['x']:.1f} × {dims['y']:.1f} × {dims['z']:.1f} mm")
+
+        if norm:
+            conf = norm.get("confidence_level", "")
+            lines.append(f"  Material Breakdown")
+            lines.append(f"  ─ Perimeter:     {norm['perimeter_g']:>9.2f} g")
+            lines.append(f"  ─ Infill:        {norm['infill_g']:>9.2f} g")
+            lines.append(f"  ─ Top/Bottom:    {norm['top_bottom_g']:>9.2f} g")
+            if norm.get("purge_g", 0.0) > 0:
+                lines.append(f"  ─ Purge:         {norm['purge_g']:>9.2f} g")
+            lines.append(f"  Total Mass:   {mass:>12.2f} g  [{conf}]")
+        else:
+            lines.append(f"  Mass:         {mass:>12.2f} g")
+
         lines.append(f"  Print Time:   {hours:>12.2f} hrs")
         lines.append(f"  True Cost:    {'$'+f'{cost:.2f}':>12}")
         lines.append(f"  SRP (2.7×):   {'$'+f'{srp:.2f}':>12}")
@@ -158,10 +195,42 @@ class EstimateSelectedCommand:
         }
 
     def Activated(self):
+        global _active_profile_id, _active_profile_name
+
         selection = Gui.Selection.getSelection()
         if not selection:
             App.Console.PrintWarning("Maker-Ops: Select one or more bodies first.\n")
             return
+
+        # Profile picker — shown once per session if profiles are available
+        if _active_profile_id is None:
+            profiles = _fetch_profiles()
+            if profiles:
+                try:
+                    from PySide2 import QtWidgets
+                except ImportError:
+                    try:
+                        from PySide6 import QtWidgets
+                    except ImportError:
+                        QtWidgets = None
+
+                if QtWidgets is not None:
+                    names = [p["name"] for p in profiles]
+                    names.insert(0, "(None — M6 fallback)")
+                    chosen, ok = QtWidgets.QInputDialog.getItem(
+                        Gui.getMainWindow(),
+                        "Maker-Ops — Select Print Profile",
+                        "Profile:",
+                        names,
+                        0,
+                        False,
+                    )
+                    if ok and chosen != names[0]:
+                        for p in profiles:
+                            if p["name"] == chosen:
+                                _active_profile_id = p["id"]
+                                _active_profile_name = p["name"]
+                                break
 
         body_results = []
         for obj in selection:
@@ -172,7 +241,7 @@ class EstimateSelectedCommand:
                 )
                 continue
             try:
-                res = _call_api(obj.Label, vol, dims)
+                res = _call_api(obj.Label, vol, dims, profile_id=_active_profile_id)
             except Exception as e:
                 App.Console.PrintError(
                     f"Maker-Ops: API error for '{obj.Label}': {e}\n"
@@ -181,7 +250,7 @@ class EstimateSelectedCommand:
             body_results.append((obj.Label, vol, dims, res))
 
         if body_results:
-            _show_dialog(body_results)
+            _show_dialog(body_results, profile_name=_active_profile_name)
 
     def IsActive(self):
         return App.ActiveDocument is not None
