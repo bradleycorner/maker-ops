@@ -435,6 +435,115 @@ def verify_geometry_estimation():
         return result["calculation"]["true_cost"] == 0.55
 
 
+def verify_print_normalization():
+    """Verify the Print Process Normalization (M7) end-to-end."""
+    # 1. Create machine
+    machine_data = {
+        "name": f"Norm Printer {uuid.uuid4().hex[:6]}",
+        "machine_type": "FDM",
+        "purchase_cost": 1000.0,
+        "lifetime_hours": 1000.0,
+        "maintenance_factor": 0.0,
+    }
+    req = urllib.request.Request(
+        f"{SERVER_URL}/machines/",
+        data=json.dumps(machine_data).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req) as response:
+        machine = json.loads(response.read())
+
+    # 2. Create material
+    material_data = {
+        "name": f"Norm PLA {uuid.uuid4().hex[:6]}",
+        "cost_per_gram": 0.02,
+        "density_g_cm3": 1.24,
+    }
+    req = urllib.request.Request(
+        f"{SERVER_URL}/materials/",
+        data=json.dumps(material_data).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req) as response:
+        material = json.loads(response.read())
+
+    # 3. Create print profile
+    profile_data = {
+        "name": "0.4mm Standard",
+        "nozzle_diameter_mm": 0.4,
+        "layer_height_mm": 0.2,
+        "wall_count": 3,
+        "infill_percentage": 20.0,
+        "top_layers": 4,
+        "bottom_layers": 4,
+        "extrusion_width_factor": 1.2,
+        "volumetric_flow_rate_mm3s": 10.0,
+        "purge_mass_per_change_g": 3.0,
+    }
+    req = urllib.request.Request(
+        f"{SERVER_URL}/print-profiles/",
+        data=json.dumps(profile_data).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(req) as response:
+        profile = json.loads(response.read())
+
+    assert profile["id"] > 0, "Profile ID must be a positive integer"
+
+    # 4. POST estimate-from-geometry with profile + dimensions
+    geo_data = {
+        "name": "Norm Test Part",
+        "volume_mm3": 50000.0,
+        "material_id": material["id"],
+        "machine_id": machine["id"],
+        "print_profile_id": profile["id"],
+        "dimensions_mm": {"x": 40.0, "y": 30.0, "z": 20.0},
+        "color_changes": 0,
+    }
+
+    def post_estimate():
+        req = urllib.request.Request(
+            f"{SERVER_URL}/products/estimate-from-geometry",
+            data=json.dumps(geo_data).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+        )
+        with urllib.request.urlopen(req) as response:
+            return json.loads(response.read())
+
+    result = post_estimate()
+
+    # 5. Assert normalization object present with all fields
+    norm = result.get("normalization")
+    if norm is None:
+        return False
+    for field in ("perimeter_g", "infill_g", "top_bottom_g", "purge_g", "confidence_level"):
+        if field not in norm:
+            return False
+
+    # 6. Assert confidence_level == "medium" (dimensions were provided)
+    if norm["confidence_level"] != "medium":
+        return False
+
+    # 7. Assert mass > 0 and print_hours > 0
+    if result["estimated_mass_g"] <= 0:
+        return False
+    if result["estimated_print_hours"] <= 0:
+        return False
+
+    # 8. Assert print_profile_id echoed back correctly
+    if result.get("print_profile_id") != profile["id"]:
+        return False
+
+    # 9. Determinism: same request → identical values
+    result2 = post_estimate()
+    if result["estimated_mass_g"] != result2["estimated_mass_g"]:
+        return False
+    if result["estimated_print_hours"] != result2["estimated_print_hours"]:
+        return False
+
+    return True
+
+
 def run_checks():
     checks = {
         "health": "/docs",
@@ -487,6 +596,14 @@ def run_checks():
     except Exception as e:
         print(f"Geometry estimation failed with error: {e}")
         failures.append("geometry_estimation_error")
+
+    print("Checking Print Process Normalization...")
+    try:
+        if not verify_print_normalization():
+            failures.append("print_normalization_accuracy")
+    except Exception as e:
+        print(f"Print normalization failed with error: {e}")
+        failures.append("print_normalization_error")
 
     return failures
 
