@@ -21,6 +21,20 @@ class PrintProfileCreate(BaseModel):
     purge_mass_per_change_g: float = 3.0
 
 
+class PrintProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    nozzle_diameter_mm: Optional[float] = None
+    filament_diameter_mm: Optional[float] = None
+    layer_height_mm: Optional[float] = None
+    wall_count: Optional[int] = None
+    infill_percentage: Optional[float] = None
+    top_layers: Optional[int] = None
+    bottom_layers: Optional[int] = None
+    extrusion_width_factor: Optional[float] = None
+    volumetric_flow_rate_mm3s: Optional[float] = None
+    purge_mass_per_change_g: Optional[float] = None
+
+
 class PrintProfileRead(PrintProfileCreate):
     id: int
     created_at: str
