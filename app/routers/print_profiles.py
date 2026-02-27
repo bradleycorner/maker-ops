@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.database import get_db
-from app.schemas import PrintProfileCreate, PrintProfileRead
+from app.schemas import PrintProfileCreate, PrintProfileRead, PrintProfileUpdate
 
 router = APIRouter(prefix="/print-profiles", tags=["print-profiles"])
 
@@ -34,4 +34,19 @@ def get_print_profile(
     profile = db.query(models.PrintProfile).filter(models.PrintProfile.id == profile_id).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Print profile not found")
+    return profile
+
+
+@router.patch("/{profile_id}", response_model=PrintProfileRead)
+def update_print_profile(
+    profile_id: int, updates: PrintProfileUpdate, db: Session = Depends(get_db)
+) -> PrintProfileRead:
+    """Partially update a print profile. Only supplied fields are changed."""
+    profile = db.query(models.PrintProfile).filter(models.PrintProfile.id == profile_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Print profile not found")
+    for field, value in updates.model_dump(exclude_none=True).items():
+        setattr(profile, field, value)
+    db.commit()
+    db.refresh(profile)
     return profile
