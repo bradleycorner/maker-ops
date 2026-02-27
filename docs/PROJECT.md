@@ -221,18 +221,24 @@ docs/fdm-addendum-print-process-normalization.md
 
 ---
 
-### 🔜 Milestone 7 — FreeCAD Workbench Exploration (Long-Term)
+### 🔜 Milestone 7 — Print Process Normalization
 
-**Goal:** Provide design-time manufacturing intelligence.
+**Goal:** Replace volumetric approximation with a physics-grounded normalization layer driven by real printer process parameters.
 
-Potential capabilities:
+Capabilities:
 
-- lighting component generators
-- engineering asset insertion
-- print-aware geometry guidance
-- manual support design tools
+- `print_profiles` table and CRUD API
+- `app/services/print_normalizer.py` — decomposed material accounting (perimeter, infill, top/bottom, purge)
+- Updated `estimate-from-geometry` endpoint accepts `print_profile_id`
+- FreeCAD workbench: profile selector + normalization breakdown in estimate dialog
+- Confidence level signalling (`high` / `medium` / `low`)
+- Graceful fallback to M6 volumetric estimate when no profile supplied
 
-This milestone is exploratory and follows stable backend maturity.
+Reference:
+```
+docs/milestone-7-print-normalization.md
+docs/fdm-addendum-print-process-normalization.md
+```
 
 ---
 

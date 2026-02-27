@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from app.database import BASE_DIR, engine
-from app.routers import analytics, assets, automation, machines, materials, products, shows
+from app.routers import analytics, assets, automation, machines, materials, print_profiles, products, shows
 
 # Auto-create tables on startup (data/ directory is created in database.py)
 from app import models  # noqa: F401 — side-effect: registers all ORM models
@@ -19,6 +19,7 @@ app = FastAPI(
 
 app.include_router(machines.router)
 app.include_router(materials.router)
+app.include_router(print_profiles.router)
 app.include_router(products.router)
 app.include_router(assets.router)
 app.include_router(shows.router)

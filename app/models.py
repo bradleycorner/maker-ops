@@ -73,6 +73,26 @@ class ProductMaterial(Base):
     material = relationship("Material", back_populates="product_materials")
 
 
+class PrintProfile(Base):
+    """FDM slicer profile used for physics-grounded mass/time estimation."""
+
+    __tablename__ = "print_profiles"
+
+    id                        = Column(Integer, primary_key=True)
+    name                      = Column(String, nullable=False)
+    nozzle_diameter_mm        = Column(Float, nullable=False)
+    filament_diameter_mm      = Column(Float, nullable=False, default=1.75)
+    layer_height_mm           = Column(Float, nullable=False)
+    wall_count                = Column(Integer, nullable=False, default=3)
+    infill_percentage         = Column(Float, nullable=False, default=20.0)
+    top_layers                = Column(Integer, nullable=False, default=4)
+    bottom_layers             = Column(Integer, nullable=False, default=4)
+    extrusion_width_factor    = Column(Float, nullable=False, default=1.2)
+    volumetric_flow_rate_mm3s = Column(Float, nullable=False, default=10.0)
+    purge_mass_per_change_g   = Column(Float, nullable=False, default=3.0)
+    created_at                = Column(String, default=lambda: datetime.now(timezone.utc).isoformat())
+
+
 class EngineeringAsset(Base):
     """Reusable CAD components (mounts, hubs, reflectors) as amortized engineering capital."""
 

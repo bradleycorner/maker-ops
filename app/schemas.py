@@ -4,6 +4,53 @@ from pydantic import BaseModel
 
 
 # ---------------------------------------------------------------------------
+# Print Profile
+# ---------------------------------------------------------------------------
+
+class PrintProfileCreate(BaseModel):
+    name: str
+    nozzle_diameter_mm: float
+    filament_diameter_mm: float = 1.75
+    layer_height_mm: float
+    wall_count: int = 3
+    infill_percentage: float = 20.0
+    top_layers: int = 4
+    bottom_layers: int = 4
+    extrusion_width_factor: float = 1.2
+    volumetric_flow_rate_mm3s: float = 10.0
+    purge_mass_per_change_g: float = 3.0
+
+
+class PrintProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    nozzle_diameter_mm: Optional[float] = None
+    filament_diameter_mm: Optional[float] = None
+    layer_height_mm: Optional[float] = None
+    wall_count: Optional[int] = None
+    infill_percentage: Optional[float] = None
+    top_layers: Optional[int] = None
+    bottom_layers: Optional[int] = None
+    extrusion_width_factor: Optional[float] = None
+    volumetric_flow_rate_mm3s: Optional[float] = None
+    purge_mass_per_change_g: Optional[float] = None
+
+
+class PrintProfileRead(PrintProfileCreate):
+    id: int
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class NormalizationBreakdown(BaseModel):
+    perimeter_g: float
+    infill_g: float
+    top_bottom_g: float
+    purge_g: float
+    confidence_level: str  # "medium" (bounding box) | "low" (volume only)
+
+
+# ---------------------------------------------------------------------------
 # Machine
 # ---------------------------------------------------------------------------
 
@@ -260,6 +307,8 @@ class GeometryEstimationRequest(CalculationRequest):
     hardware_cost: float = 0.0
     dimensions_mm: Optional[dict[str, float]] = None
     save: bool = False
+    print_profile_id: Optional[int] = None
+    color_changes: int = 0
 
 
 class GeometryEstimationResponse(BaseModel):
@@ -267,6 +316,8 @@ class GeometryEstimationResponse(BaseModel):
     estimated_mass_g: float
     estimated_print_hours: float
     geometry_metadata: dict
+    normalization: Optional[NormalizationBreakdown] = None
+    print_profile_id: Optional[int] = None
 
 
 # ---------------------------------------------------------------------------
