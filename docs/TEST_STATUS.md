@@ -84,6 +84,7 @@ A local HTTP API that accepts structured input, persists data to a local databas
 | 4 — Design Comparison Engine | 2026-02-23 | 61 | 61 | 0 | #4 → main |
 | 5 — Automation Interfaces | 2026-02-23 | 65 | 65 | 0 | #5 → main |
 | 6 — CAD Integration Foundations | 2026-02-24 | 69 | 69 | 0 | #6 → main |
+| 7 — Print Process Normalization | 2026-02-27 | 73 | 73 | 0 | #20 → main |
 
 ---
 
@@ -174,3 +175,33 @@ A local HTTP API that accepts structured input, persists data to a local databas
 
 **Specification**
 - FDM v1.1 addendum (`docs/fdm-addendum-print-process-normalization.md`) defines the Print Process Normalization layer architecture
+
+---
+
+## Milestone 7 — Print Process Normalization
+
+**Completed:** 2026-02-27
+**Merged:** PR #17 + #19 → `develop`, PR #20 → `main`
+**Status:** ✅ Closed
+
+### Verified Capabilities
+
+**Print Profile CRUD**
+- Print profiles can be created with slicer parameters (nozzle diameter, layer height, wall count, infill %, top/bottom layers, flow rate, purge mass)
+- Profiles can be listed and retrieved by ID
+- Profiles can be partially updated via PATCH
+
+**Print Process Normalization**
+- When `print_profile_id` and `dimensions_mm` are supplied to `estimate-from-geometry`, the normalizer decomposes mass into: perimeter, infill, top/bottom, and purge fractions
+- Normalization result is returned under the `normalization` key with `confidence_level = "medium"`
+- Mass and print time are calculated from physical process parameters, not volumetric approximation
+- Purge waste is included when `color_changes > 0`
+- When no profile is supplied, the M6 volumetric fallback path runs unchanged and `normalization = null`
+- Identical inputs produce identical outputs (deterministic)
+
+**FreeCAD Workbench**
+- Estimate command fetches available profiles from the API on first use and presents a `QInputDialog` picker
+- Selected profile is sent with every API call for the session
+- Estimate dialog shows a "Material Breakdown" section (perimeter / infill / top/bottom / purge) when normalization data is present
+- Confidence level is shown inline next to total mass: `[medium]`
+- Falls back to M6 display when no profile is active
