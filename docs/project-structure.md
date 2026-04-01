@@ -32,6 +32,10 @@ maker-ops/
 ├── data/
 │   └── maker_ops.db
 │
+├── setup/
+│   ├── com.makerops.api.plist.template
+│   └── install-launchagent.sh
+│
 ├── requirements.txt
 ├── README.md
 └── run.sh
@@ -97,7 +101,18 @@ Output:
 
 ## Development Startup
 
+The project must reside on the **internal drive** (`~/Projects/maker-ops`). Symlinked
+paths to external volumes will cause startup failures when the drive is not mounted.
+
+Install the launchd auto-start agent (once):
+
+```bash
+bash setup/install-launchagent.sh
 ```
+
+Or start manually for development:
+
+```bash
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt

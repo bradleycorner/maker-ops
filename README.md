@@ -95,6 +95,9 @@ maker-ops/
 ├── BOOTSTRAP_PROMPT.md
 ├── CLAUDE.md
 ├── requirements.txt
+├── setup/
+│   ├── com.makerops.api.plist.template   # launchd agent template
+│   └── install-launchagent.sh            # one-command installer
 └── run.sh
 ```
 
@@ -116,23 +119,32 @@ SQLite   via SQLAlchemy SessionLocal
 
 ## Setup
 
+The project must live on the **internal drive** (`~/Projects/maker-ops`), not on a
+symlinked path to external storage. The API and SQLite database are path-sensitive —
+if the external drive is unmounted the server will fail to start.
+
 ```bash
+git clone git@github.com:bradleycorner/maker-ops.git ~/Projects/maker-ops
+cd ~/Projects/maker-ops
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Or use the bootstrap script (creates the venv, installs deps, and starts the server):
+### Auto-start (recommended)
+
+Install the launchd agent so the API starts at login and stays running:
 
 ```bash
-./run.sh
+bash setup/install-launchagent.sh
 ```
 
----
+Logs are written to `~/Library/Logs/makerops-api.log`.
 
-## Running
+### Manual start
 
 ```bash
+source venv/bin/activate
 uvicorn app.main:app --reload
 ```
 
