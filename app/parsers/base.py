@@ -23,6 +23,13 @@ class PrintEstimate:
     source: str = "gcode"
     layer_height: Optional[float] = None
     nozzle_diameter: Optional[float] = None
+    # V7 / OrcaSlicer extras
+    wall_count: Optional[int] = None
+    infill_percentage: Optional[float] = None
+    speed_wall_outer_mm_s: Optional[float] = None
+    speed_wall_inner_mm_s: Optional[float] = None
+    speed_infill_mm_s: Optional[float] = None
+    filament_volume_cm3: Optional[float] = None
 
 
 class BaseParser(ABC):
