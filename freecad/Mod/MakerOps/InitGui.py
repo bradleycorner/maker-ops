@@ -27,15 +27,15 @@ class EstimateSelectedCommand:
 
         def extract_shape_data(obj):
             if not hasattr(obj, "Shape") or obj.Shape is None:
-                return None, None
+                return None, None, None
             shape = obj.Shape
             is_null = False
             if hasattr(shape, "isNull"):
                 is_null = shape.isNull() if callable(shape.isNull) else shape.isNull
             if is_null:
-                return None, None
+                return None, None, None
             if hasattr(shape, "isValid") and not shape.isValid():
-                return None, None
+                return None, None, None
             vol = float(shape.Volume)
             bb = shape.BoundBox
             dims = {
@@ -43,7 +43,8 @@ class EstimateSelectedCommand:
                 "y": float(bb.YMax - bb.YMin),
                 "z": float(bb.ZMax - bb.ZMin),
             }
-            return vol, dims
+            lateral_area = float(shape.Area) if hasattr(shape, "Area") else None
+            return vol, dims, lateral_area
 
         def fetch_profiles():
             try:
@@ -54,7 +55,7 @@ class EstimateSelectedCommand:
             except Exception:
                 return []
 
-        def call_api(name, vol, dims, profile_id=None, color_changes=0):
+        def call_api(name, vol, dims, lateral_area=None, profile_id=None, color_changes=0):
             url = "http://127.0.0.1:8000/products/estimate-from-geometry"
             payload = {
                 "name": name,
@@ -65,6 +66,8 @@ class EstimateSelectedCommand:
                 "save": False,
                 "color_changes": color_changes,
             }
+            if lateral_area is not None:
+                payload["lateral_surface_area_mm2"] = lateral_area
             if profile_id is not None:
                 payload["print_profile_id"] = profile_id
             data = json.dumps(payload).encode("utf-8")
@@ -214,14 +217,14 @@ class EstimateSelectedCommand:
 
         body_results = []
         for obj in selection:
-            vol, dims = extract_shape_data(obj)
+            vol, dims, lateral_area = extract_shape_data(obj)
             if vol is None:
                 App.Console.PrintWarning(
                     f"Maker-Ops: Skipping '{obj.Label}' — no valid shape.\n"
                 )
                 continue
             try:
-                res = call_api(obj.Label, vol, dims, profile_id=cls._profile_id)
+                res = call_api(obj.Label, vol, dims, lateral_area=lateral_area, profile_id=cls._profile_id)
             except Exception as e:
                 App.Console.PrintError(
                     f"Maker-Ops: API error for '{obj.Label}': {e}\n"
@@ -252,15 +255,15 @@ class ToggleLiveModeCommand:
 
         def extract_shape_data(obj):
             if not hasattr(obj, "Shape") or obj.Shape is None:
-                return None, None
+                return None, None, None
             shape = obj.Shape
             is_null = False
             if hasattr(shape, "isNull"):
                 is_null = shape.isNull() if callable(shape.isNull) else shape.isNull
             if is_null:
-                return None, None
+                return None, None, None
             if hasattr(shape, "isValid") and not shape.isValid():
-                return None, None
+                return None, None, None
             vol = float(shape.Volume)
             bb = shape.BoundBox
             dims = {
@@ -268,9 +271,10 @@ class ToggleLiveModeCommand:
                 "y": float(bb.YMax - bb.YMin),
                 "z": float(bb.ZMax - bb.ZMin),
             }
-            return vol, dims
+            lateral_area = float(shape.Area) if hasattr(shape, "Area") else None
+            return vol, dims, lateral_area
 
-        def call_api(name, vol, dims):
+        def call_api(name, vol, dims, lateral_area=None):
             url = "http://127.0.0.1:8000/products/estimate-from-geometry"
             payload = {
                 "name": name,
@@ -280,6 +284,8 @@ class ToggleLiveModeCommand:
                 "dimensions_mm": dims,
                 "save": False,
             }
+            if lateral_area is not None:
+                payload["lateral_surface_area_mm2"] = lateral_area
             data = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(
                 url, data=data, headers={"Content-Type": "application/json"}, method="POST"
@@ -292,11 +298,11 @@ class ToggleLiveModeCommand:
                 import json, urllib.request
                 if prop != "Shape":
                     return
-                vol, dims = extract_shape_data(obj)
+                vol, dims, lateral_area = extract_shape_data(obj)
                 if vol is None:
                     return
                 try:
-                    res = call_api(obj.Label, vol, dims)
+                    res = call_api(obj.Label, vol, dims, lateral_area=lateral_area)
                     calc  = res.get("calculation", {})
                     mass  = res.get("estimated_mass_g", 0.0)
                     hours = res.get("estimated_print_hours", 0.0)

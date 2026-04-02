@@ -138,6 +138,8 @@ def estimate_from_geometry(
             extrusion_width_factor=db_profile.extrusion_width_factor,
             volumetric_flow_rate_mm3s=db_profile.volumetric_flow_rate_mm3s,
             purge_mass_per_change_g=db_profile.purge_mass_per_change_g,
+            speed_wall_mm_s=db_profile.speed_wall_mm_s,
+            speed_infill_mm_s=db_profile.speed_infill_mm_s,
         )
 
         norm_result = normalize_from_geometry(
@@ -146,6 +148,7 @@ def estimate_from_geometry(
             density_g_cm3=density,
             profile=profile_params,
             color_changes=request.color_changes,
+            lateral_surface_area_mm2=request.lateral_surface_area_mm2,
         )
 
         mass_g = norm_result.estimated_mass_grams
