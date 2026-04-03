@@ -221,9 +221,10 @@ docs/fdm-addendum-print-process-normalization.md
 
 ---
 
-### 🔜 Milestone 7 — Print Process Normalization
+### ✅ Milestone 7 — Print Process Normalization (Completed)
 
 **Goal:** Replace volumetric approximation with a physics-grounded normalization layer driven by real printer process parameters.
+**Closed:** 2026-02-27 — PR #17 + #19 → `develop`, PR #20 → `main`
 
 Capabilities:
 
