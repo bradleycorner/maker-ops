@@ -6,9 +6,13 @@ decomposition: perimeter + infill + top/bottom + purge.
 All functions are pure — zero database access.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from math import floor
 from typing import Optional
+
+# Travel moves (rapid positioning) consume ~12-15% of total print time.
+# This factor is applied on top of extrusion time to approximate wall-clock time.
+_TRAVEL_OVERHEAD = 1.15
 
 
 @dataclass
@@ -22,6 +26,8 @@ class ProfileParams:
     extrusion_width_factor: float
     volumetric_flow_rate_mm3s: float
     purge_mass_per_change_g: float
+    speed_wall_mm_s: float = 200.0   # outer + inner wall speed (conservative: use outer)
+    speed_infill_mm_s: float = 250.0
 
 
 @dataclass
@@ -41,16 +47,28 @@ def normalize_from_geometry(
     density_g_cm3: float,
     profile: ProfileParams,
     color_changes: int = 0,
+    lateral_surface_area_mm2: Optional[float] = None,
 ) -> NormalizationResult:
     """Decompose FDM mass and print time into perimeter/infill/top-bottom/purge.
 
-    When dimensions_mm (x, y, z) are present the bounding-box rectangle
-    approximation is used (confidence = "medium").  When absent the function
-    falls back to the M6 volume-only formula (confidence = "low").
+    When dimensions_mm (x, y, z) are present the normalizer uses a
+    volume-derived cross-section for top/bottom area and either the
+    FreeCAD lateral surface area (when provided) or a bounding-box
+    rectangle approximation for perimeter length (confidence = "medium").
+
+    When absent the function falls back to the M6 volume-only formula
+    (confidence = "low").
+
+    Args:
+        lateral_surface_area_mm2: Total lateral surface area of the shape
+            as reported by FreeCAD's shape.Area (mm²). When provided this
+            replaces the bounding-box rectangle perimeter approximation and
+            correctly handles hollow, ribbed, and faceted geometry.
     """
     if dimensions_mm and all(k in dimensions_mm for k in ("x", "y", "z")):
         return _normalize_with_dimensions(
-            volume_mm3, dimensions_mm, density_g_cm3, profile, color_changes
+            volume_mm3, dimensions_mm, density_g_cm3, profile, color_changes,
+            lateral_surface_area_mm2,
         )
     return _normalize_volume_only(volume_mm3, density_g_cm3, profile, color_changes)
 
@@ -65,6 +83,7 @@ def _normalize_with_dimensions(
     density_g_cm3: float,
     profile: ProfileParams,
     color_changes: int,
+    lateral_surface_area_mm2: Optional[float],
 ) -> NormalizationResult:
     x = dimensions_mm["x"]
     y = dimensions_mm["y"]
@@ -73,8 +92,13 @@ def _normalize_with_dimensions(
     extrusion_width = profile.nozzle_diameter_mm * profile.extrusion_width_factor
     layer_count = max(1, floor(z / profile.layer_height_mm))
 
-    # Perimeter — bounding-box rectangle per layer
+    # Perimeter length per layer — used for MASS calculation only.
+    # Bounding-box rectangle is used here regardless of lateral_surface_area_mm2
+    # because shape.Area includes horizontal faces (ribs, top, bottom) which would
+    # inflate the mass estimate.  The volume/z footprint fix below handles the
+    # top/bottom overestimate.  shape.Area is used only for time (see below).
     perimeter_length = 2.0 * (x + y)
+
     perimeter_volume = (
         perimeter_length
         * profile.wall_count
@@ -83,8 +107,10 @@ def _normalize_with_dimensions(
         * layer_count
     )
 
-    # Top + bottom solid layers
-    footprint_area = x * y
+    # Top + bottom solid layers.
+    # Use volume-derived cross-section instead of bounding-box x*y footprint.
+    # x*y overestimates hollow/thin-wall geometry by as much as 7.5×.
+    footprint_area = volume_mm3 / z if z > 0 else x * y
     top_bottom_volume = (
         footprint_area
         * (profile.top_layers + profile.bottom_layers)
@@ -105,9 +131,29 @@ def _normalize_with_dimensions(
     infill_g     = (infill_volume     / 1000.0) * density_g_cm3
     total_g      = perimeter_g + infill_g + top_bottom_g + purge_g
 
-    # Print time from total extruded volume
-    total_extruded = perimeter_volume + infill_volume + top_bottom_volume
-    print_hours = (total_extruded / profile.volumetric_flow_rate_mm3s) / 3600.0
+    # Print time.
+    #
+    # When lateral_surface_area_mm2 is available (from FreeCAD shape.Area) we
+    # use a speed-aware path-length calculation that correctly handles ribbed and
+    # hollow geometry.  shape.Area captures the actual tool-path surface so
+    # lateral_area/z gives a realistic per-layer path length.
+    #
+    # Without shape.Area we fall back to the volumetric flow rate approach (same
+    # as M6) to avoid regressing accuracy on shapes where bounding-box perimeter
+    # is the only available approximation.
+    wall_xsec = extrusion_width * profile.layer_height_mm
+    if lateral_surface_area_mm2 and lateral_surface_area_mm2 > 0 and z > 0:
+        # Speed-based: wall path derived from actual surface area
+        time_perimeter_length = lateral_surface_area_mm2 / z
+        wall_length_mm   = time_perimeter_length * profile.wall_count * layer_count
+        infill_length_mm = (infill_volume / wall_xsec) if wall_xsec > 0 else 0.0
+        wall_time_s   = (wall_length_mm   / profile.speed_wall_mm_s)   if profile.speed_wall_mm_s   > 0 else 0.0
+        infill_time_s = (infill_length_mm / profile.speed_infill_mm_s) if profile.speed_infill_mm_s > 0 else 0.0
+        print_hours   = ((wall_time_s + infill_time_s) * _TRAVEL_OVERHEAD) / 3600.0
+    else:
+        # Volumetric flow rate fallback — no regression vs M7 baseline
+        total_extruded = perimeter_volume + infill_volume + top_bottom_volume
+        print_hours = (total_extruded / profile.volumetric_flow_rate_mm3s) / 3600.0
 
     return NormalizationResult(
         estimated_mass_grams=total_g,

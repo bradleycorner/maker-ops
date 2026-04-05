@@ -19,6 +19,8 @@ class PrintProfileCreate(BaseModel):
     extrusion_width_factor: float = 1.2
     volumetric_flow_rate_mm3s: float = 10.0
     purge_mass_per_change_g: float = 3.0
+    speed_wall_mm_s: float = 200.0
+    speed_infill_mm_s: float = 250.0
 
 
 class PrintProfileUpdate(BaseModel):
@@ -33,6 +35,8 @@ class PrintProfileUpdate(BaseModel):
     extrusion_width_factor: Optional[float] = None
     volumetric_flow_rate_mm3s: Optional[float] = None
     purge_mass_per_change_g: Optional[float] = None
+    speed_wall_mm_s: Optional[float] = None
+    speed_infill_mm_s: Optional[float] = None
 
 
 class PrintProfileRead(PrintProfileCreate):
@@ -306,6 +310,7 @@ class GeometryEstimationRequest(CalculationRequest):
     labor_minutes: int = 0
     hardware_cost: float = 0.0
     dimensions_mm: Optional[dict[str, float]] = None
+    lateral_surface_area_mm2: Optional[float] = None
     save: bool = False
     print_profile_id: Optional[int] = None
     color_changes: int = 0

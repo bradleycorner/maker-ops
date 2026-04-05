@@ -90,6 +90,8 @@ class PrintProfile(Base):
     extrusion_width_factor    = Column(Float, nullable=False, default=1.2)
     volumetric_flow_rate_mm3s = Column(Float, nullable=False, default=10.0)
     purge_mass_per_change_g   = Column(Float, nullable=False, default=3.0)
+    speed_wall_mm_s           = Column(Float, nullable=False, default=200.0)
+    speed_infill_mm_s         = Column(Float, nullable=False, default=250.0)
     created_at                = Column(String, default=lambda: datetime.now(timezone.utc).isoformat())
 
 
