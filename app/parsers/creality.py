@@ -4,20 +4,20 @@ Handles output from Creality Print and Creality Slicer.
 Detects the format via header markers and extracts filament usage and
 print time from structured comment lines.
 
-Supports both legacy format and Creality Print V7 / OrcaSlicer format:
+Supports three header formats:
 
     Legacy:
         ;Filament used: 486.9g
         ;Estimated printing time (normal mode): 9h5m
 
-    V7 / OrcaSlicer:
+    V7 / OrcaSlicer (single/dual extruder):
         ;Filament used: [486.9g, 0g]
         ;Estimated printing time (normal mode): 13h 28m 58s
-        ; wall loops = 3
-        ; sparse infill density = 15%
-        ; outer wall speed = 200
-        ; inner wall speed = 300
-        ; sparse infill speed = 250
+
+    V7 K2 Plus (multi-extruder, unit-labelled):
+        ; filament used [g] = 0.00, 0.00, 0.00, 269.17
+        ; estimated printing time (normal mode) = 6h 33m 24s
+        Values are per-extruder; all are summed for total filament.
 """
 
 import re
@@ -29,11 +29,19 @@ _DETECTION_MARKERS: tuple[str, ...] = (
     "crealityprint",
 )
 
-# Handles both:
-#   ;Filament used: 486.9g
-#   ;Filament used: [486.9g, 0g]
+# Handles:
+#   ;Filament used: 486.9g                    (legacy)
+#   ;Filament used: [486.9g, 0g]              (V7 bracket array)
 _FILAMENT_PATTERN = re.compile(
     r";\s*filament used\s*[=:]\s*\[?([\d.]+)g",
+    re.IGNORECASE,
+)
+
+# Handles:
+#   ; filament used [g] = 0.00, 0.00, 0.00, 269.17    (K2 Plus multi-extruder)
+# All per-extruder values are summed to get total filament.
+_FILAMENT_K2_PATTERN = re.compile(
+    r";\s*filament used\s*\[g\]\s*=\s*([\d.,\s]+)",
     re.IGNORECASE,
 )
 
@@ -56,6 +64,11 @@ _SPEED_OUTER_PATTERN   = re.compile(r";\s*outer wall speed\s*[=:]\s*([\d.]+)", r
 _SPEED_INNER_PATTERN   = re.compile(r";\s*inner wall speed\s*[=:]\s*([\d.]+)", re.IGNORECASE)
 _SPEED_INFILL_PATTERN  = re.compile(r";\s*sparse infill speed\s*[=:]\s*([\d.]+)", re.IGNORECASE)
 _FILAMENT_VOL_PATTERN  = re.compile(r";\s*filament used\s*\[mm3\]\s*[=:]\s*([\d.]+)", re.IGNORECASE)
+
+
+def _sum_extruder_values(raw: str) -> float:
+    """Sum comma-separated per-extruder filament values (K2 Plus format)."""
+    return sum(float(v.strip()) for v in raw.split(",") if v.strip())
 
 
 def _parse_time_to_seconds(
@@ -86,15 +99,20 @@ class CrealityGcodeParser(BaseParser):
         return any(marker in lower for marker in _DETECTION_MARKERS)
 
     def extract(self, text: str) -> PrintEstimate:
+        # Try bracket/legacy format first, then K2 Plus unit-labelled format
         filament_match = _FILAMENT_PATTERN.search(text)
-        if not filament_match:
+        k2_match = _FILAMENT_K2_PATTERN.search(text)
+
+        if filament_match:
+            filament_grams = float(filament_match.group(1))
+        elif k2_match:
+            filament_grams = _sum_extruder_values(k2_match.group(1))
+        else:
             raise ValueError("CrealityGcodeParser: filament usage not found in header")
 
         time_match = _TIME_PATTERN.search(text)
         if not time_match:
             raise ValueError("CrealityGcodeParser: print time not found in header")
-
-        filament_grams = float(filament_match.group(1))
         print_time_seconds = _parse_time_to_seconds(
             time_match.group(1), time_match.group(2), time_match.group(3)
         )
