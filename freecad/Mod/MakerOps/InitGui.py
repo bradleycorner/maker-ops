@@ -27,15 +27,15 @@ class EstimateSelectedCommand:
 
         def extract_shape_data(obj):
             if not hasattr(obj, "Shape") or obj.Shape is None:
-                return None, None
+                return None, None, None
             shape = obj.Shape
             is_null = False
             if hasattr(shape, "isNull"):
                 is_null = shape.isNull() if callable(shape.isNull) else shape.isNull
             if is_null:
-                return None, None
+                return None, None, None
             if hasattr(shape, "isValid") and not shape.isValid():
-                return None, None
+                return None, None, None
             vol = float(shape.Volume)
             bb = shape.BoundBox
             dims = {
@@ -43,7 +43,8 @@ class EstimateSelectedCommand:
                 "y": float(bb.YMax - bb.YMin),
                 "z": float(bb.ZMax - bb.ZMin),
             }
-            return vol, dims
+            lateral_area = float(shape.Area) if hasattr(shape, "Area") else None
+            return vol, dims, lateral_area
 
         def fetch_profiles():
             try:
@@ -54,7 +55,7 @@ class EstimateSelectedCommand:
             except Exception:
                 return []
 
-        def call_api(name, vol, dims, profile_id=None, color_changes=0):
+        def call_api(name, vol, dims, lateral_area=None, profile_id=None, color_changes=0):
             url = "http://127.0.0.1:8000/products/estimate-from-geometry"
             payload = {
                 "name": name,
@@ -65,6 +66,8 @@ class EstimateSelectedCommand:
                 "save": False,
                 "color_changes": color_changes,
             }
+            if lateral_area is not None:
+                payload["lateral_surface_area_mm2"] = lateral_area
             if profile_id is not None:
                 payload["print_profile_id"] = profile_id
             data = json.dumps(payload).encode("utf-8")
@@ -74,7 +77,58 @@ class EstimateSelectedCommand:
             with urllib.request.urlopen(req, timeout=3) as r:
                 return json.loads(r.read().decode())
 
+        def pick_profile(profiles, current_name=""):
+            """Show profile picker. Returns (profile_id, profile_name) or current values if cancelled."""
+            try:
+                from PySide2 import QtWidgets
+            except ImportError:
+                try:
+                    from PySide6 import QtWidgets
+                except ImportError:
+                    return None, ""
+
+            names = [p["name"] for p in profiles]
+            names.insert(0, "(None — M6 fallback)")
+            current_index = names.index(current_name) if current_name in names else 0
+            chosen, ok = QtWidgets.QInputDialog.getItem(
+                Gui.getMainWindow(),
+                "Maker-Ops — Select Print Profile",
+                "Profile:",
+                names,
+                current_index,
+                False,
+            )
+            if not ok:
+                return None, current_name  # cancelled — keep current
+            if chosen == names[0]:
+                return None, ""
+            for p in profiles:
+                if p["name"] == chosen:
+                    return p["id"], p["name"]
+            return None, ""
+
+        def run_estimation(selection, profile_id):
+            """Call API for each selected body. Returns list of (label, vol, dims, res)."""
+            results = []
+            for obj in selection:
+                vol, dims, lateral_area = extract_shape_data(obj)
+                if vol is None:
+                    App.Console.PrintWarning(
+                        f"Maker-Ops: Skipping '{obj.Label}' — no valid shape.\n"
+                    )
+                    continue
+                try:
+                    res = call_api(obj.Label, vol, dims, lateral_area=lateral_area, profile_id=profile_id)
+                except Exception as e:
+                    App.Console.PrintError(
+                        f"Maker-Ops: API error for '{obj.Label}': {e}\n"
+                    )
+                    res = {"error": str(e)}
+                results.append((obj.Label, vol, dims, res))
+            return results
+
         def show_dialog(body_results, profile_name=""):
+            """Render results. Returns True if user clicked 'Change Profile'."""
             try:
                 from PySide2 import QtWidgets, QtGui
             except ImportError:
@@ -82,7 +136,7 @@ class EstimateSelectedCommand:
                     from PySide6 import QtWidgets, QtGui
                 except ImportError:
                     App.Console.PrintError("Maker-Ops: PySide2/PySide6 not available.\n")
-                    return
+                    return False
 
             W = 44
             lines = []
@@ -166,12 +220,22 @@ class EstimateSelectedCommand:
             browser.setMinimumHeight(min(int(doc_height) + 20, 600))
             layout.addWidget(browser)
 
-            btn = QtWidgets.QPushButton("Close")
-            btn.clicked.connect(dlg.accept)
-            layout.addWidget(btn)
+            btn_row = QtWidgets.QHBoxLayout()
+            btn_change = QtWidgets.QPushButton("Change Profile")
+            btn_close  = QtWidgets.QPushButton("Close")
+            btn_row.addWidget(btn_change)
+            btn_row.addStretch()
+            btn_row.addWidget(btn_close)
+            layout.addLayout(btn_row)
 
             dlg.setLayout(layout)
+
+            change_requested = [False]
+            btn_change.clicked.connect(lambda: (change_requested.__setitem__(0, True), dlg.accept()))
+            btn_close.clicked.connect(dlg.accept)
+
             dlg.exec()
+            return change_requested[0]
 
         # --- main logic ---
 
@@ -182,55 +246,21 @@ class EstimateSelectedCommand:
             App.Console.PrintWarning("Maker-Ops: Select one or more bodies first.\n")
             return
 
-        # Profile picker — shown once per session if profiles are available
-        if cls._profile_id is None:
-            profiles = fetch_profiles()
-            if profiles:
-                try:
-                    from PySide2 import QtWidgets
-                except ImportError:
-                    try:
-                        from PySide6 import QtWidgets
-                    except ImportError:
-                        QtWidgets = None
+        profiles = fetch_profiles()
 
-                if QtWidgets is not None:
-                    names = [p["name"] for p in profiles]
-                    names.insert(0, "(None — M6 fallback)")
-                    chosen, ok = QtWidgets.QInputDialog.getItem(
-                        Gui.getMainWindow(),
-                        "Maker-Ops — Select Print Profile",
-                        "Profile:",
-                        names,
-                        0,
-                        False,
-                    )
-                    if ok and chosen != names[0]:
-                        for p in profiles:
-                            if p["name"] == chosen:
-                                cls._profile_id = p["id"]
-                                cls._profile_name = p["name"]
-                                break
+        # Ask for profile on first run (no profile chosen yet)
+        if cls._profile_id is None and profiles:
+            cls._profile_id, cls._profile_name = pick_profile(profiles)
 
-        body_results = []
-        for obj in selection:
-            vol, dims = extract_shape_data(obj)
-            if vol is None:
-                App.Console.PrintWarning(
-                    f"Maker-Ops: Skipping '{obj.Label}' — no valid shape.\n"
-                )
-                continue
-            try:
-                res = call_api(obj.Label, vol, dims, profile_id=cls._profile_id)
-            except Exception as e:
-                App.Console.PrintError(
-                    f"Maker-Ops: API error for '{obj.Label}': {e}\n"
-                )
-                res = {"error": str(e)}
-            body_results.append((obj.Label, vol, dims, res))
-
-        if body_results:
-            show_dialog(body_results, profile_name=cls._profile_name)
+        while True:
+            body_results = run_estimation(selection, cls._profile_id)
+            if not body_results:
+                break
+            want_change = show_dialog(body_results, profile_name=cls._profile_name)
+            if not want_change or not profiles:
+                break
+            cls._profile_id, cls._profile_name = pick_profile(profiles, cls._profile_name)
+            # loop: re-run estimation with newly selected profile
 
     def IsActive(self):
         return App.ActiveDocument is not None
@@ -252,15 +282,15 @@ class ToggleLiveModeCommand:
 
         def extract_shape_data(obj):
             if not hasattr(obj, "Shape") or obj.Shape is None:
-                return None, None
+                return None, None, None
             shape = obj.Shape
             is_null = False
             if hasattr(shape, "isNull"):
                 is_null = shape.isNull() if callable(shape.isNull) else shape.isNull
             if is_null:
-                return None, None
+                return None, None, None
             if hasattr(shape, "isValid") and not shape.isValid():
-                return None, None
+                return None, None, None
             vol = float(shape.Volume)
             bb = shape.BoundBox
             dims = {
@@ -268,9 +298,10 @@ class ToggleLiveModeCommand:
                 "y": float(bb.YMax - bb.YMin),
                 "z": float(bb.ZMax - bb.ZMin),
             }
-            return vol, dims
+            lateral_area = float(shape.Area) if hasattr(shape, "Area") else None
+            return vol, dims, lateral_area
 
-        def call_api(name, vol, dims):
+        def call_api(name, vol, dims, lateral_area=None):
             url = "http://127.0.0.1:8000/products/estimate-from-geometry"
             payload = {
                 "name": name,
@@ -280,6 +311,8 @@ class ToggleLiveModeCommand:
                 "dimensions_mm": dims,
                 "save": False,
             }
+            if lateral_area is not None:
+                payload["lateral_surface_area_mm2"] = lateral_area
             data = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(
                 url, data=data, headers={"Content-Type": "application/json"}, method="POST"
@@ -292,11 +325,11 @@ class ToggleLiveModeCommand:
                 import json, urllib.request
                 if prop != "Shape":
                     return
-                vol, dims = extract_shape_data(obj)
+                vol, dims, lateral_area = extract_shape_data(obj)
                 if vol is None:
                     return
                 try:
-                    res = call_api(obj.Label, vol, dims)
+                    res = call_api(obj.Label, vol, dims, lateral_area=lateral_area)
                     calc  = res.get("calculation", {})
                     mass  = res.get("estimated_mass_g", 0.0)
                     hours = res.get("estimated_print_hours", 0.0)
