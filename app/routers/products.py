@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
@@ -20,6 +20,7 @@ from app.schemas import (
     GeometryEstimationRequest,
     GeometryEstimationResponse,
     NormalizationBreakdown,
+    PrintProfileCreate,
     ProductAssetRead,
     ProductComparisonRequest,
     ProductComparisonResponse,
@@ -44,15 +45,21 @@ async def calculate_from_gcode(
     target_hourly_rate: float = Form(25.0),
     pricing_multiplier: float = Form(2.7),
     waste_factor: float = Form(1.1),
+    save_profile: bool = Form(False),
+    profile_name: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ) -> CalculationResult:
     """Calculate profitability directly from a G-code file upload.
 
     Parses the file header to extract print time and filament usage, then
     calls the cost engine to produce a pricing result.
+
+    Optionally saves the extracted slicer settings as a reusable print profile
+    by passing save_profile=true and profile_name=<name>.
     """
-    # 1. Read the beginning of the file (usually headers are in first 100KB)
-    content = await file.read(102400)
+    # 1. Read the full file. Creality Print V7 writes filament summary at the
+    # end of the file rather than the header, so we cannot limit to first N bytes.
+    content = await file.read()
     try:
         text = content.decode("utf-8", errors="ignore")
     except Exception as e:
@@ -90,6 +97,26 @@ async def calculate_from_gcode(
         pricing_multiplier=pricing_multiplier,
         waste_factor=waste_factor,
     )
+
+    # 5. Optionally save extracted slicer settings as a reusable print profile.
+    # Requires save_profile=True, a non-empty profile_name, and at minimum
+    # layer_height and nozzle_diameter (both are required schema fields with no
+    # meaningful fallback). Failure to save does not affect the cost result.
+    if save_profile and profile_name and estimate.layer_height and estimate.nozzle_diameter:
+        profile_data = PrintProfileCreate(
+            name=profile_name,
+            nozzle_diameter_mm=estimate.nozzle_diameter,
+            layer_height_mm=estimate.layer_height,
+            wall_count=estimate.wall_count if estimate.wall_count is not None else 3,
+            infill_percentage=estimate.infill_percentage if estimate.infill_percentage is not None else 20.0,
+            speed_wall_mm_s=estimate.speed_wall_outer_mm_s if estimate.speed_wall_outer_mm_s is not None else 200.0,
+            speed_infill_mm_s=estimate.speed_infill_mm_s if estimate.speed_infill_mm_s is not None else 250.0,
+        )
+        db_profile = models.PrintProfile(**profile_data.model_dump())
+        db.add(db_profile)
+        db.commit()
+        db.refresh(db_profile)
+        result["saved_profile_id"] = db_profile.id
 
     return result
 

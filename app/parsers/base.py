@@ -23,6 +23,11 @@ class PrintEstimate:
     source: str = "gcode"
     layer_height: Optional[float] = None
     nozzle_diameter: Optional[float] = None
+    wall_count: Optional[int] = None
+    infill_percentage: Optional[float] = None
+    speed_wall_outer_mm_s: Optional[float] = None
+    speed_wall_inner_mm_s: Optional[float] = None
+    speed_infill_mm_s: Optional[float] = None
 
 
 class BaseParser(ABC):

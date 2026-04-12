@@ -250,6 +250,7 @@ class CalculationResult(BaseModel):
     labor_cost: float
     asset_cost: float
     machine_hourly_rate: float
+    saved_profile_id: Optional[int] = None
 
 
 # ---------------------------------------------------------------------------
