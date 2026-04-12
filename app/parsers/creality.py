@@ -27,9 +27,18 @@ _TIME_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-# Optional metadata
-_LAYER_HEIGHT_PATTERN = re.compile(r";\s*layer height\s*[=:]\s*([\d.]+)", re.IGNORECASE)
-_NOZZLE_PATTERN = re.compile(r";\s*nozzle diameter\s*[=:]\s*([\d.]+)", re.IGNORECASE)
+# Optional metadata — supports both : and = separators, and space or underscore
+# between words (V7 uses layer_height / nozzle_diameter; legacy uses spaces)
+_LAYER_HEIGHT_PATTERN  = re.compile(r";\s*layer[\s_]height\s*[=:]\s*([\d.]+)", re.IGNORECASE)
+_NOZZLE_PATTERN        = re.compile(r";\s*nozzle[\s_]diameter\s*[=:]\s*([\d.]+)", re.IGNORECASE)
+
+# V7 / OrcaSlicer extras
+_WALL_COUNT_PATTERN    = re.compile(r";\s*wall loops\s*[=:]\s*(\d+)", re.IGNORECASE)
+_INFILL_PCT_PATTERN    = re.compile(r";\s*sparse infill density\s*[=:]\s*([\d.]+)", re.IGNORECASE)
+_SPEED_OUTER_PATTERN   = re.compile(r";\s*outer wall speed\s*[=:]\s*([\d.]+)", re.IGNORECASE)
+_SPEED_INNER_PATTERN   = re.compile(r";\s*inner wall speed\s*[=:]\s*([\d.]+)", re.IGNORECASE)
+_SPEED_INFILL_PATTERN  = re.compile(r";\s*sparse infill speed\s*[=:]\s*([\d.]+)", re.IGNORECASE)
+_FILAMENT_VOL_PATTERN  = re.compile(r";\s*filament used\s*\[mm3\]\s*[=:]\s*([\d.]+)", re.IGNORECASE)
 
 
 def _parse_time_to_seconds(hours: str | None, minutes: str | None) -> int:
@@ -59,20 +68,23 @@ class CrealityGcodeParser(BaseParser):
             time_match.group(1), time_match.group(2)
         )
 
-        layer_height: float | None = None
-        layer_match = _LAYER_HEIGHT_PATTERN.search(text)
-        if layer_match:
-            layer_height = float(layer_match.group(1))
+        def _float(pattern: re.Pattern) -> float | None:
+            m = pattern.search(text)
+            return float(m.group(1)) if m else None
 
-        nozzle_diameter: float | None = None
-        nozzle_match = _NOZZLE_PATTERN.search(text)
-        if nozzle_match:
-            nozzle_diameter = float(nozzle_match.group(1))
+        def _int(pattern: re.Pattern) -> int | None:
+            m = pattern.search(text)
+            return int(m.group(1)) if m else None
 
         return PrintEstimate(
             filament_grams=filament_grams,
             print_time_seconds=print_time_seconds,
             slicer_name="creality",
-            layer_height=layer_height,
-            nozzle_diameter=nozzle_diameter,
+            layer_height=_float(_LAYER_HEIGHT_PATTERN),
+            nozzle_diameter=_float(_NOZZLE_PATTERN),
+            wall_count=_int(_WALL_COUNT_PATTERN),
+            infill_percentage=_float(_INFILL_PCT_PATTERN),
+            speed_wall_outer_mm_s=_float(_SPEED_OUTER_PATTERN),
+            speed_wall_inner_mm_s=_float(_SPEED_INNER_PATTERN),
+            speed_infill_mm_s=_float(_SPEED_INFILL_PATTERN),
         )
